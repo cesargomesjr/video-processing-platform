@@ -2,8 +2,14 @@
 
 ## Authentication
 
-- password hash seguro;
-- token com expiração;
+- cadastro/login com email e senha providos pelo Firebase Authentication;
+- Firebase ID Token validado no backend com Firebase Admin SDK;
+- assinatura, expiração, issuer e audience/project validados;
+- API não recebe nem persiste senha;
+- identidade externa `firebaseUid` mapeada para `UserId` interno;
+- Application depende de port agnóstico de provider;
+- Authentication Emulator permitido apenas fora de produção;
+- credenciais Firebase fornecidas por secret/Application Default Credentials;
 - credenciais nunca em logs.
 
 ## Authorization

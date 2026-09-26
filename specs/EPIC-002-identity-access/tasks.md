@@ -2,11 +2,11 @@
 
 As tarefas abaixo são unidades técnicas de execução. Não representam novos requisitos.
 
-## E2-TASK-001 — Model User
+## E2-TASK-001 — Model local identity
 
 **Goal**
 
-Criar entidade/VOs/erros necessários.
+Criar `User`, `UserId`, `FirebaseUid` e erros de domínio necessários.
 
 **Implementation area**
 
@@ -23,11 +23,11 @@ unit
 - architecture boundaries preservados;
 - documentação afetada atualizada.
 
-## E2-TASK-002 — User repository port
+## E2-TASK-002 — Define identity ports
 
 **Goal**
 
-Definir contrato orientado ao domínio.
+Definir `UserRepository`, `IdentityTokenVerifier` e `VerifiedIdentity` sem dependência de Firebase.
 
 **Implementation area**
 
@@ -44,11 +44,11 @@ unit
 - architecture boundaries preservados;
 - documentação afetada atualizada.
 
-## E2-TASK-003 — Register use case
+## E2-TASK-003 — Resolve authenticated user
 
 **Goal**
 
-Implementar TDD do cadastro.
+Implementar via TDD o find-or-create idempotente por `FirebaseUid`, incluindo conflito concorrente.
 
 **Implementation area**
 
@@ -65,19 +65,19 @@ unit
 - architecture boundaries preservados;
 - documentação afetada atualizada.
 
-## E2-TASK-004 — Login use case
+## E2-TASK-004 — Firebase token verifier adapter
 
 **Goal**
 
-Implementar autenticação.
+Validar Firebase ID Token e traduzir claims/erros por meio do Firebase Admin SDK.
 
 **Implementation area**
 
-`identity/application`
+`identity/infrastructure`
 
 **Tests**
 
-unit
+unit/integration com Authentication Emulator
 
 **Done when**
 
@@ -86,11 +86,11 @@ unit
 - architecture boundaries preservados;
 - documentação afetada atualizada.
 
-## E2-TASK-005 — Persistence adapter
+## E2-TASK-005 — PostgreSQL user repository
 
 **Goal**
 
-Persistir User em PostgreSQL.
+Persistir `User` e resolver identidade por `firebase_uid` com segurança concorrente.
 
 **Implementation area**
 
@@ -107,19 +107,19 @@ integration
 - architecture boundaries preservados;
 - documentação afetada atualizada.
 
-## E2-TASK-006 — Password adapter
+## E2-TASK-006 — PostgreSQL schema and readiness
 
 **Goal**
 
-Implementar hashing.
+Adicionar PostgreSQL ao Compose, migration de `users` e dependência do banco no readiness.
 
 **Implementation area**
 
-`identity/infrastructure`
+`platform/database` e `main`
 
 **Tests**
 
-integration
+integration/smoke
 
 **Done when**
 
@@ -128,19 +128,19 @@ integration
 - architecture boundaries preservados;
 - documentação afetada atualizada.
 
-## E2-TASK-007 — Token adapter
+## E2-TASK-007 — Authentication boundary
 
 **Goal**
 
-Implementar token com expiração.
+Extrair bearer token, validar identidade e disponibilizar principal autenticado às rotas protegidas.
 
 **Implementation area**
 
-`identity/infrastructure`
+`identity/presentation`
 
 **Tests**
 
-unit/integration
+unit/E2E
 
 **Done when**
 
@@ -149,11 +149,11 @@ unit/integration
 - architecture boundaries preservados;
 - documentação afetada atualizada.
 
-## E2-TASK-008 — HTTP controllers
+## E2-TASK-008 — Authenticated identity endpoint
 
 **Goal**
 
-Criar controllers finos.
+Implementar `PUT /auth/me` com provisionamento idempotente e contrato de erros.
 
 **Implementation area**
 
@@ -168,4 +168,49 @@ E2E
 - implementação concluída;
 - testes correspondentes passam;
 - architecture boundaries preservados;
+- documentação afetada atualizada.
+
+## E2-TASK-009 — Ownership policy
+
+**Goal**
+
+Definir e testar o uso obrigatório do `UserId` autenticado nos recursos pertencentes a usuário, sem confiar em IDs enviados pelo cliente.
+
+**Implementation area**
+
+`identity/application` e contexts consumidores
+
+**Tests**
+
+unit/E2E
+
+**Done when**
+
+- acesso ao próprio recurso é permitido;
+- acesso cruzado não revela a existência do recurso;
+- testes correspondentes passam;
+- architecture boundaries preservados;
+- documentação afetada atualizada.
+
+## E2-TASK-010 — Local Firebase environment
+
+**Goal**
+
+Adicionar Authentication Emulator ao ambiente local, configurar `FIREBASE_PROJECT_ID` e impedir emulator em produção.
+
+**Implementation area**
+
+`main`, Docker Compose e documentação local
+
+**Tests**
+
+integration/E2E/smoke
+
+**Done when**
+
+- cadastro/login email-senha pode ser exercitado no emulator;
+- a API valida tokens emitidos pelo emulator;
+- nenhum segredo Firebase é versionado;
+- configuração de produção rejeita `FIREBASE_AUTH_EMULATOR_HOST`;
+- testes correspondentes passam;
 - documentação afetada atualizada.

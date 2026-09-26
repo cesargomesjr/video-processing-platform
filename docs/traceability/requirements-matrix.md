@@ -10,8 +10,13 @@
 | E1-OPS-001 | Foundation | container build + smoke |
 | E1-OPS-002 | Foundation | CI/delivery workflows |
 | E1-OPS-003 | Foundation | Compose config + smoke |
-| E2-FR-001 | Identity | unit + E2E |
-| E2-SEC-001 | Identity | ownership tests |
+| E2-FR-001 | Identity | Authentication Emulator + E2E |
+| E2-FR-002 | Identity | identity resolution unit/integration/E2E |
+| E2-SEC-001 | Identity | protected route E2E |
+| E2-SEC-002 | Identity | ownership unit + E2E |
+| E2-SEC-003 | Identity | schema/config/log review |
+| E2-NFR-001 | Identity | concurrent PostgreSQL integration |
+| E2-OPS-001 | Identity | Compose config + smoke/E2E |
 | E3-FR-001 | Video Management | upload integration/E2E |
 | E3-FR-003 | Video Management | list/status E2E |
 | E4-FR-001 | Processing | ffprobe integration |

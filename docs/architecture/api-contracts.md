@@ -1,33 +1,43 @@
 # Contratos HTTP
 
-## POST /auth/register
+## Authentication
+
+Cadastro e login com email/senha são realizados pelo cliente no Firebase Authentication. A API não recebe senha e não emite token próprio.
+
+Rotas protegidas recebem:
+
+```http
+Authorization: Bearer <firebase-id-token>
+```
+
+Falhas de autenticação retornam `401`:
+
+```json
+{
+  "code": "INVALID_IDENTITY_TOKEN",
+  "message": "Invalid or expired identity token",
+  "correlationId": "uuid"
+}
+```
+
+## PUT /auth/me
+
+Valida o Firebase ID Token e resolve/provisiona idempotentemente a identidade local.
 
 Request:
 
-```json
-{
-  "email": "user@example.com",
-  "password": "secret"
-}
+```http
+Authorization: Bearer <firebase-id-token>
 ```
-
-Response `201`:
-
-```json
-{
-  "id": "uuid",
-  "email": "user@example.com"
-}
-```
-
-## POST /auth/login
 
 Response `200`:
 
 ```json
 {
-  "accessToken": "token",
-  "expiresIn": 3600
+  "id": "uuid",
+  "firebaseUid": "firebase-uid",
+  "email": "user@example.com",
+  "emailVerified": false
 }
 ```
 

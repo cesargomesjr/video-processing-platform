@@ -2,7 +2,11 @@
 
 ## Objective
 
-Entregar autenticação e autorização por ownership com domínio e contratos testáveis.
+Entregar autenticação via Firebase Authentication e autorização por ownership com domínio e contratos testáveis.
+
+## Status
+
+Implemented — Gate 3 concluído em 2026-09-26.
 
 ## Documents
 

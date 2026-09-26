@@ -4,4 +4,5 @@ Feature: Resource ownership
     Given that a user is authenticated
     And the requested resource belongs to another user
     When the resource is requested
-    Then access should be denied
+    Then the API should respond as if the resource was not found
+    And the resource existence should not be revealed

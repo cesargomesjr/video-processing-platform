@@ -9,9 +9,10 @@ erDiagram
 
     USERS {
         uuid id PK
-        varchar email
-        varchar password_hash
+        varchar firebase_uid UK
+        varchar email UK
         timestamp created_at
+        boolean email_verified
         timestamp updated_at
     }
 
@@ -70,6 +71,9 @@ FAILED
 
 ## Regras
 
+- `users.firebase_uid` é obrigatório e único;
+- `users.email` pode ser nulo e possui índice único parcial quando preenchido;
+- a aplicação não persiste senha ou Firebase ID Token;
 - `UNIQUE(video_id, sequence)`;
 - `completed_chunks <= total_chunks`;
 - um chunk completo não pode ser processado novamente;

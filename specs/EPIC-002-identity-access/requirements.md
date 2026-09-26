@@ -1,91 +1,127 @@
 # Requirements — EPIC-002 — Identity & Access
 
-### E2-FR-001 — Register
+### E2-FR-001 — Email/password authentication
 
 **Statement**
 
-Usuário MUST conseguir se registrar com email e senha válidos.
+O sistema MUST permitir cadastro e login com email e senha por meio do Firebase Authentication.
 
 **Rationale**
 
-Base de identidade.
+Atender ao requisito do desafio sem manter credenciais na API.
 
 **Acceptance**
 
-Usuário persistido sem senha em texto claro.
+Uma conta válida obtém um Firebase ID Token; credenciais inválidas não obtêm acesso à API.
+
+**Evidence**
+
+Firebase Authentication Emulator + E2E.
+
+### E2-FR-002 — Authenticated local identity
+
+**Statement**
+
+A API MUST validar o Firebase ID Token e resolver uma identidade local estável a partir do claim `uid`.
+
+**Rationale**
+
+Permitir persistência e ownership independentes do provider.
+
+**Acceptance**
+
+`PUT /auth/me` com token válido provisiona/atualiza a identidade e retorna `id`, `firebaseUid` e `email`; chamadas repetidas retornam o mesmo `id`.
+
+**Evidence**
+
+Unit + integration + E2E.
+
+### E2-SEC-001 — Protected API
+
+**Statement**
+
+Rotas protegidas MUST rejeitar requisições sem Firebase ID Token válido.
+
+**Rationale**
+
+O backend é o boundary de segurança.
+
+**Acceptance**
+
+Token ausente, malformado, expirado, inválido ou de outro projeto resulta em `401`.
 
 **Evidence**
 
 Unit + E2E.
 
-### E2-FR-002 — Login
+### E2-SEC-002 — Ownership
 
 **Statement**
 
-Usuário MUST conseguir autenticar com credenciais válidas.
+Um usuário MUST NOT acessar recursos pertencentes a outro usuário.
 
 **Rationale**
 
-Acesso protegido.
+Prevenir IDOR e vazamento de dados.
 
 **Acceptance**
 
-Token válido emitido.
+Ownership usa o `UserId` interno resolvido no backend e acesso cruzado é negado sem revelar o recurso.
 
 **Evidence**
 
 Unit + E2E.
 
-### E2-SEC-001 — Ownership
+### E2-SEC-003 — Credential isolation
 
 **Statement**
 
-Usuário MUST NOT acessar recurso de outro usuário.
+A API MUST NOT receber, persistir ou registrar senhas, ID Tokens, authorization headers ou credenciais de service account.
 
 **Rationale**
 
-Prevenir IDOR.
+Reduzir superfície de ataque e exposição de segredos.
 
 **Acceptance**
 
-Acesso negado.
+O schema local não possui senha, contratos HTTP não aceitam senha e logs não contêm credenciais.
 
 **Evidence**
 
-Unit + E2E.
+Review + integration.
 
-### E2-SEC-002 — Password storage
+### E2-NFR-001 — Idempotent provisioning
 
 **Statement**
 
-Senha MUST ser armazenada somente como hash.
+O provisionamento local MUST ser idempotente sob chamadas concorrentes para o mesmo `firebaseUid`.
 
 **Rationale**
 
-Proteção de credencial.
+Evitar identidades locais duplicadas.
 
 **Acceptance**
 
-DB não possui senha plain text.
+Existe apenas um usuário por `firebaseUid`, inclusive após requisições concorrentes.
 
 **Evidence**
 
-Integration.
+Unit + PostgreSQL integration.
 
-### E2-NFR-001 — Server-side authorization
+### E2-OPS-001 — Local reproducibility
 
 **Statement**
 
-Autorização MUST ocorrer no backend.
+O ambiente local MUST executar API, PostgreSQL e Firebase Authentication Emulator sem depender do Firebase de produção.
 
 **Rationale**
 
-Frontend não é boundary de segurança.
+Garantir desenvolvimento e testes determinísticos.
 
 **Acceptance**
 
-Rotas protegidas validam identidade.
+O fluxo autenticado essencial é executável localmente via Docker Compose e comandos documentados.
 
 **Evidence**
 
-E2E.
+Compose config + smoke/E2E.
