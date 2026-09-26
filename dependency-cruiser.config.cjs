@@ -2,6 +2,24 @@
 module.exports = {
   forbidden: [
     {
+      name: 'only-main-may-depend-on-main',
+      severity: 'error',
+      from: { path: '^apps/api/src/(contexts|platform)/' },
+      to: { path: '^apps/api/src/main/' },
+    },
+    {
+      name: 'domain-must-not-depend-on-external-packages',
+      severity: 'error',
+      from: { path: '/domain/' },
+      to: { dependencyTypes: ['npm', 'npm-dev', 'npm-optional', 'npm-peer'] },
+    },
+    {
+      name: 'application-must-not-depend-on-external-packages',
+      severity: 'error',
+      from: { path: '/application/' },
+      to: { dependencyTypes: ['npm', 'npm-dev', 'npm-optional', 'npm-peer'] },
+    },
+    {
       name: 'domain-must-not-depend-on-outer-layers',
       severity: 'error',
       from: { path: '/domain/' },
