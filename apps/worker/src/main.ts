@@ -1,5 +1,10 @@
+import { loadAppConfig } from '../../../src/platform/config/app-config.schema';
+import { PinoLogger } from '../../../src/platform/logger/pino.logger';
+
 function main(): void {
-  console.log('[worker] bootstrapping video processing worker');
+  loadAppConfig();
+  const logger = new PinoLogger();
+  logger.info({}, 'worker.bootstrapping');
 }
 
 main();
