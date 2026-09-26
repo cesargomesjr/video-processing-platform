@@ -1,0 +1,59 @@
+{
+  "name": "fiapx-video-processing-platform",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Distributed video processing platform",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=24 <25",
+    "npm": ">=11 <12"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "architecture": "depcruise apps/api/src --config dependency-cruiser.config.cjs",
+    "build": "tsc -p apps/api/tsconfig.build.json",
+    "format:check": "prettier --check \"apps/**/*.ts\" \"tooling/**/*.mjs\" \"*.{json,mjs,cjs,yml}\" \".github/**/*.yml\"",
+    "lint": "eslint . && npm run architecture",
+    "test": "npm run test:app && npm run test:tooling",
+    "test:cov": "node --experimental-vm-modules node_modules/jest/bin/jest.js --config jest.config.cjs --coverage --runInBand",
+    "typecheck": "tsc -p apps/api/tsconfig.json --noEmit",
+    "verify": "npm run format:check && npm run lint && npm run typecheck && npm run test && npm run test:cov && npm run build",
+    "start": "node dist/apps/api/main/bootstrap.js",
+    "test:app": "node --experimental-vm-modules node_modules/jest/bin/jest.js --config jest.config.cjs --runInBand",
+    "test:tooling": "node --test tooling/**/*.spec.mjs",
+    "hooks:install": "node tooling/git-hooks/install-hooks.mjs",
+    "branch:guard": "node tooling/git-hooks/guard-protected-branch.mjs",
+    "branches:protect": "node tooling/github/branch-protection.mjs",
+    "prepare": "npm run hooks:install",
+    "compose:up": "docker compose up --detach --build",
+    "compose:down": "docker compose down"
+  },
+  "dependencies": {
+    "@nestjs/common": "12.1.0",
+    "@nestjs/core": "12.1.0",
+    "@nestjs/platform-express": "12.1.0",
+    "reflect-metadata": "0.2.2",
+    "rxjs": "7.8.2"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "21.2.3",
+    "@commitlint/config-conventional": "21.2.3",
+    "@eslint/js": "10.0.1",
+    "@nestjs/testing": "12.1.0",
+    "@types/jest": "30.0.0",
+    "@types/node": "26.6.3",
+    "@types/supertest": "7.2.1",
+    "dependency-cruiser": "18.4.0",
+    "eslint": "10.0.1",
+    "jest": "30.5.2",
+    "prettier": "3.6.2",
+    "supertest": "7.3.0",
+    "ts-jest": "29.4.14",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.70.1"
+  },
+  "type": "module"
+}

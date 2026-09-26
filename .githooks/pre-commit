@@ -1,0 +1,7 @@
+#!/bin/sh
+set -e
+
+node tooling/git-hooks/guard-protected-branch.mjs
+npm run lint
+npm run typecheck
+npm run test
