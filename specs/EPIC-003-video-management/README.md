@@ -28,10 +28,8 @@ Entregar ingestão segura, persistência, listagem e consulta de status dos víd
 - publicação RabbitMQ usa mensagem persistente, publisher confirm e fila durável;
 - PostgreSQL, MinIO e RabbitMQ participam do readiness.
 
-## Refinement status
+## Status
 
-Gate 2 aprovado em 2026-09-26. O EPIC-003 está Ready for Development.
+Gate 3 aprovado em 2026-09-26. O EPIC-003 esta implementado e validado com testes automatizados, cobertura global >= 80%, build, lint arquitetural e smoke real via Docker Compose.
 
-## Execution rule
-
-A implementação começa somente após o Gate 2 estar aprovado. Alterações nas decisões acima exigem atualização do design, critérios de aceite e rastreabilidade antes do código.
+Mudancas futuras nas decisoes acima exigem atualizacao do design, criterios de aceite e rastreabilidade antes do codigo.

@@ -128,7 +128,7 @@ specs/
 templates/
 ```
 
-## Execução local da fundação
+## Execucao local
 
 ```bash
 npm ci
@@ -136,6 +136,8 @@ npm run compose:up
 curl --fail http://localhost:3000/health/live
 curl --fail http://localhost:3000/health/ready
 ```
+
+O Compose local sobe API, PostgreSQL, Firebase Authentication Emulator, MinIO e RabbitMQ. O fluxo de upload direto e confirmacao do video esta documentado em `docs/runbooks/local-development.md`.
 
 Para encerrar:
 
