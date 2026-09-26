@@ -1,14 +1,28 @@
 # Contratos HTTP
 
-## Authentication
-
-Cadastro e login com email/senha são realizados pelo cliente no Firebase Authentication. A API não recebe senha e não emite token próprio.
+## Conventions
 
 Rotas protegidas recebem:
 
 ```http
 Authorization: Bearer <firebase-id-token>
 ```
+
+Requests podem enviar `X-Correlation-Id` como UUID. Valor ausente ou inválido é substituído por um UUID gerado pela API. A resposta devolve o correlation ID efetivo. Tokens, authorization headers e URLs assinadas não são registrados em logs.
+
+Erros usam:
+
+```json
+{
+  "code": "MACHINE_READABLE_CODE",
+  "message": "Safe public message",
+  "correlationId": "uuid"
+}
+```
+
+## Authentication
+
+Cadastro e login com email/senha são realizados pelo cliente no Firebase Authentication. A API não recebe senha e não emite token próprio.
 
 Falhas de autenticação retornam `401`:
 
@@ -24,12 +38,6 @@ Falhas de autenticação retornam `401`:
 
 Valida o Firebase ID Token e resolve/provisiona idempotentemente a identidade local.
 
-Request:
-
-```http
-Authorization: Bearer <firebase-id-token>
-```
-
 Response `200`:
 
 ```json
@@ -43,81 +51,118 @@ Response `200`:
 
 ## POST /videos
 
-Cria o recurso e inicia o fluxo de upload.
+Cria um vídeo para o principal autenticado e retorna instruções temporárias de upload direto.
+
+Request:
+
+```json
+{
+  "filename": "sample.mp4",
+  "contentType": "video/mp4",
+  "sizeBytes": 104857600
+}
+```
 
 Response `201`:
 
 ```json
 {
   "id": "uuid",
-  "status": "PENDING",
-  "uploadUrl": "https://signed-upload-url"
+  "filename": "sample.mp4",
+  "contentType": "video/mp4",
+  "sizeBytes": 104857600,
+  "status": "AWAITING_UPLOAD",
+  "progress": null,
+  "createdAt": "ISO-8601",
+  "upload": {
+    "method": "PUT",
+    "url": "https://signed-upload-url",
+    "headers": {
+      "content-type": "video/mp4"
+    },
+    "expiresAt": "ISO-8601"
+  }
 }
 ```
 
-## POST /videos/:id/upload-completed
+Possible errors: `400 INVALID_VIDEO_REQUEST`, `413 VIDEO_TOO_LARGE`, `415 UNSUPPORTED_VIDEO_TYPE`, `503 VIDEO_STORAGE_UNAVAILABLE`.
 
-Confirma upload e publica `VideoUploaded`.
+## POST /videos/:videoId/upload-completed
 
-Response:
+Confirma o objeto do proprietário. Não recebe storage key ou metadata fornecida pelo cliente. Repetição após confirmação é sucesso idempotente.
+
+Response `200`:
 
 ```json
 {
   "id": "uuid",
-  "status": "PENDING"
+  "status": "PENDING",
+  "progress": null,
+  "uploadedAt": "ISO-8601"
 }
 ```
 
+Possible errors: `400 INVALID_VIDEO_REQUEST`, `404 VIDEO_NOT_FOUND`, `409 VIDEO_UPLOAD_NOT_FOUND`, `409 VIDEO_UPLOAD_MISMATCH`, `409 VIDEO_UPLOAD_INVALID_STATE`, `503 VIDEO_STORAGE_UNAVAILABLE`.
+
 ## GET /videos
 
-Response:
+Query:
 
-```json
-[
-  {
-    "id": "uuid",
-    "filename": "sample.mp4",
-    "status": "PROCESSING",
-    "progress": 66.67
-  }
-]
+```text
+GET /videos?limit=20&cursor=<opaque-url-safe-cursor>
 ```
 
-## GET /videos/:id
+`limit` defaults to 20 and cannot exceed 100. Ordering is `createdAt DESC, id DESC`.
 
-Response:
+Response `200`:
+
+```json
+{
+  "items": [
+    {
+      "id": "uuid",
+      "filename": "sample.mp4",
+      "status": "PENDING",
+      "progress": null,
+      "createdAt": "ISO-8601"
+    }
+  ],
+  "page": {
+    "nextCursor": "opaque-or-null"
+  }
+}
+```
+
+Malformed cursors return `400 INVALID_CURSOR`.
+
+## GET /videos/:videoId
+
+Response `200`:
 
 ```json
 {
   "id": "uuid",
   "filename": "sample.mp4",
+  "contentType": "video/mp4",
+  "sizeBytes": 104857600,
   "status": "PROCESSING",
   "progress": 66.67,
-  "createdAt": "ISO-8601"
+  "createdAt": "ISO-8601",
+  "uploadedAt": "ISO-8601"
 }
 ```
 
-## GET /videos/:id/download
+A resource that is missing or belongs to another user returns the same `404 VIDEO_NOT_FOUND`.
 
-Disponível apenas quando `COMPLETED`.
+## GET /videos/:videoId/download
 
-Response:
+Introduced by EPIC-005 and available only when `COMPLETED`.
+
+Response `200`:
 
 ```json
 {
   "downloadUrl": "https://signed-download-url",
   "expiresIn": 300
-}
-```
-
-## Erros
-
-Formato padrão:
-
-```json
-{
-  "code": "VIDEO_NOT_FOUND",
-  "message": "Video not found",
-  "correlationId": "uuid"
 }
 ```

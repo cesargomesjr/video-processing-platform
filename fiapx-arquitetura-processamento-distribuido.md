@@ -227,17 +227,20 @@ sequenceDiagram
     participant A as API
     participant S as Object Storage
     participant D as PostgreSQL
+    participant O as Transactional Outbox
     participant Q as RabbitMQ
 
     U->>F: Seleciona vídeo
     F->>A: POST /videos
-    A->>D: INSERT video status=PENDING
+    A->>D: INSERT video status=AWAITING_UPLOAD
     A-->>F: videoId + signedUploadUrl
     F->>S: Upload direto
     F->>A: Confirma upload
-    A->>D: Atualiza storageKey
-    A->>Q: VideoUploaded
-    A-->>F: 202 Accepted
+    A->>D: Verifica ownership e promove para PENDING
+    D->>O: INSERT VideoUploaded na mesma transação
+    A-->>F: 200 OK
+
+    O->>Q: Publica com publisher confirm
 ```
 
 Vantagens:
@@ -284,12 +287,14 @@ Não há necessidade inicial de RBAC complexo.
 
 ```mermaid
 stateDiagram-v2
-    [*] --> PENDING
+    [*] --> AWAITING_UPLOAD
+    AWAITING_UPLOAD --> PENDING: upload confirmado
     PENDING --> ANALYZING
     ANALYZING --> PROCESSING
     PROCESSING --> AGGREGATING
     AGGREGATING --> COMPLETED
 
+    PENDING --> FAILED
     ANALYZING --> FAILED
     PROCESSING --> FAILED
     AGGREGATING --> FAILED
@@ -301,6 +306,7 @@ Estados:
 
 | Status | Significado |
 |---|---|
+| `AWAITING_UPLOAD` | recurso criado, aguardando confirmação do objeto |
 | `PENDING` | upload concluído, aguardando processamento |
 | `ANALYZING` | metadados sendo analisados |
 | `PROCESSING` | chunks sendo executados |
@@ -899,15 +905,22 @@ CREATE TABLE video_processing_chunks (
 
 # 28. Contratos de eventos
 
-## VideoUploaded
+## VideoUploaded.v1
 
 ```json
 {
   "eventId": "uuid",
   "eventType": "VideoUploaded",
+  "eventVersion": 1,
   "occurredAt": "2026-09-26T13:00:00Z",
-  "videoId": "uuid",
-  "storageKey": "videos/uuid/original.mp4"
+  "correlationId": "uuid",
+  "payload": {
+    "videoId": "uuid",
+    "storageKey": "videos/uuid/original.mp4",
+    "objectVersion": "provider-version",
+    "contentType": "video/mp4",
+    "sizeBytes": 104857600
+  }
 }
 ```
 
@@ -979,12 +992,14 @@ sequenceDiagram
 
     U->>F: Upload
     F->>A: Criar vídeo
-    A->>D: INSERT PENDING
+    A->>D: INSERT AWAITING_UPLOAD
     A-->>F: signedUploadUrl
     F->>S: Upload arquivo
     F->>A: Upload concluído
 
-    A->>Q: VideoUploaded
+    A->>D: UPDATE PENDING + INSERT outbox
+    A-->>F: Upload confirmado
+    D->>Q: Dispatcher publica VideoUploaded.v1
     Q->>V: VideoUploaded
 
     V->>S: Ler vídeo
@@ -1305,8 +1320,12 @@ Resposta:
 ```json
 {
   "id": "uuid",
-  "status": "PENDING",
-  "uploadUrl": "https://..."
+  "status": "AWAITING_UPLOAD",
+  "upload": {
+    "method": "PUT",
+    "url": "https://...",
+    "expiresAt": "ISO-8601"
+  }
 }
 ```
 

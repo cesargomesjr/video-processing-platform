@@ -8,7 +8,7 @@ flowchart LR
     NT[Notification]
 
     IAM -->|identity| VM
-    VM -->|VideoUploaded| VP
+    VM -->|VideoUploaded.v1| VP
     VP -->|VideoCompleted| VM
     VP -->|VideoProcessingFailed| NT
 ```

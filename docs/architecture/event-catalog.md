@@ -13,21 +13,29 @@
 }
 ```
 
-## VideoUploaded
+## VideoUploaded.v1
 
-Produtor: Video Management  
+Produtor: Video Management
 Consumidor: Analyzer
+Exchange: `video.events`
+Routing key: `video.uploaded.v1`
+Queue: `video.analysis`
 
 ```json
 {
   "videoId": "uuid",
-  "storageKey": "videos/uuid/original.mp4"
+  "storageKey": "videos/uuid/original.mp4",
+  "objectVersion": "provider-version",
+  "contentType": "video/mp4",
+  "sizeBytes": 104857600
 }
 ```
 
+A versão do objeto é obrigatória e torna o input imutável mesmo se a mesma key receber outro upload. O evento é gravado via transactional outbox e pode ser entregue mais de uma vez com o mesmo `eventId`.
+
 ## VideoAnalyzed
 
-Produtor: Analyzer  
+Produtor: Analyzer
 Consumidor: Orchestrator
 
 ```json
@@ -43,7 +51,7 @@ Consumidor: Orchestrator
 
 ## ProcessVideoChunk
 
-Produtor: Orchestrator  
+Produtor: Orchestrator
 Consumidor: Worker
 
 ```json
@@ -53,13 +61,14 @@ Consumidor: Worker
   "sequence": 3,
   "startTimeSeconds": 600,
   "durationSeconds": 300,
-  "storageKey": "videos/uuid/original.mp4"
+  "storageKey": "videos/uuid/original.mp4",
+  "objectVersion": "provider-version"
 }
 ```
 
 ## ChunkCompleted
 
-Produtor: Worker  
+Produtor: Worker
 Consumidor: fan-in coordinator
 
 ```json
@@ -73,7 +82,7 @@ Consumidor: fan-in coordinator
 
 ## VideoCompleted
 
-Produtor: Aggregator  
+Produtor: Aggregator
 Consumidor: Video Management / Notification
 
 ```json
@@ -94,9 +103,10 @@ Consumidor: Video Management / Notification
 
 ## Regras
 
-- `eventId` obrigatório;
-- `correlationId` obrigatório;
-- payloads externos validados;
-- consumers idempotentes;
-- mensagens desconhecidas rejeitadas de forma segura;
-- provider-specific types não atravessam boundaries.
+- `eventId`, `eventType`, `eventVersion`, `occurredAt` e `correlationId` são obrigatórios;
+- payloads externos são validados antes de Application/Domain;
+- producer usa mensagem persistente e publisher confirm;
+- consumers assumem at-least-once e são idempotentes;
+- mensagens desconhecidas ou versões incompatíveis são rejeitadas de forma segura;
+- provider-specific types, signed URLs e credenciais não atravessam boundaries;
+- uma nova estrutura incompatível exige incremento de `eventVersion`.
