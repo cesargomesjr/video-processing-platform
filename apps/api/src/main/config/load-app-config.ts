@@ -6,69 +6,54 @@ export type AppConfig = Readonly<{
   firebaseAuthEmulatorHost: string | null;
   firebaseProjectId: string;
   nodeEnv: NodeEnvironment;
+  objectStorageAccessKey: string;
+  objectStorageBucket: string;
+  objectStorageEndpoint: string;
+  objectStoragePublicEndpoint: string;
+  objectStorageSecretKey: string;
+  outboxBatchSize: number;
+  outboxIntervalMs: number;
   port: number;
+  rabbitmqUrl: string;
+  videoUploadMaxBytes: number;
+  videoUploadTtlSeconds: number;
 }>;
 
 type ExternalEnvironment = Readonly<Record<string, string | undefined>>;
+type RequiredProductionKey =
+  | 'DATABASE_URL'
+  | 'FIREBASE_PROJECT_ID'
+  | 'OBJECT_STORAGE_ACCESS_KEY'
+  | 'OBJECT_STORAGE_ENDPOINT'
+  | 'OBJECT_STORAGE_PUBLIC_ENDPOINT'
+  | 'OBJECT_STORAGE_SECRET_KEY'
+  | 'RABBITMQ_URL';
 
-const DEFAULT_DATABASE_POOL_MAX = 10;
 const DEFAULT_DATABASE_URL = 'postgresql://fiapx:fiapx@127.0.0.1:5432/fiapx';
-const DEFAULT_FIREBASE_PROJECT_ID = 'demo-fiapx';
-const DEFAULT_PORT = 3000;
-const MIN_PORT = 1;
 const MAX_PORT = 65_535;
-
-function requiredProductionValue(
-  environment: ExternalEnvironment,
-  key: 'DATABASE_URL' | 'FIREBASE_PROJECT_ID',
-): string | undefined {
-  return environment.NODE_ENV === 'production' ? environment[key] : undefined;
-}
 
 function parseNodeEnvironment(value: string | undefined): NodeEnvironment {
   const nodeEnvironment = value ?? 'development';
-
-  if (
-    nodeEnvironment !== 'development' &&
-    nodeEnvironment !== 'test' &&
-    nodeEnvironment !== 'production'
-  ) {
+  if (!['development', 'test', 'production'].includes(nodeEnvironment)) {
     throw new Error('NODE_ENV must be development, test, or production');
   }
-
-  return nodeEnvironment;
+  return nodeEnvironment as NodeEnvironment;
 }
 
-function parsePort(value: string | undefined): number {
-  if (value === undefined) {
-    return DEFAULT_PORT;
-  }
-
-  const port = Number(value);
-
-  if (!Number.isInteger(port) || port < MIN_PORT || port > MAX_PORT) {
-    throw new Error('APP_PORT must be an integer between 1 and 65535');
-  }
-
-  return port;
-}
-
-function parsePositiveInteger(
+function parseInteger(
   value: string | undefined,
   fallback: number,
   name: string,
+  minimum = 1,
+  maximum = Number.MAX_SAFE_INTEGER,
 ): number {
-  if (value === undefined) {
-    return fallback;
+  const parsed = value === undefined ? fallback : Number(value);
+  if (!Number.isSafeInteger(parsed) || parsed < minimum || parsed > maximum) {
+    throw new Error(
+      `${name} must be an integer between ${String(minimum)} and ${String(maximum)}`,
+    );
   }
-
-  const parsedValue = Number(value);
-
-  if (!Number.isInteger(parsedValue) || parsedValue <= 0) {
-    throw new Error(`${name} must be a positive integer`);
-  }
-
-  return parsedValue;
+  return parsed;
 }
 
 function parseRequiredString(
@@ -76,50 +61,60 @@ function parseRequiredString(
   fallback: string,
   name: string,
 ): string {
-  const parsedValue = value?.trim() ?? fallback;
-
-  if (parsedValue.length === 0) {
+  const parsed = value?.trim() ?? fallback;
+  if (parsed.length === 0)
     throw new Error(`${name} must be a non-empty string`);
-  }
+  return parsed;
+}
 
-  return parsedValue;
+function parseUrl(
+  value: string | undefined,
+  fallback: string,
+  name: string,
+): string {
+  const parsed = parseRequiredString(value, fallback, name);
+  try {
+    const url = new URL(parsed);
+    if (!['http:', 'https:', 'amqp:', 'amqps:'].includes(url.protocol))
+      throw new Error();
+    return parsed;
+  } catch {
+    throw new Error(`${name} must be a valid URL`);
+  }
 }
 
 export function loadAppConfig(environment: ExternalEnvironment): AppConfig {
   const nodeEnv = parseNodeEnvironment(environment.NODE_ENV);
   const emulatorHost = environment.FIREBASE_AUTH_EMULATOR_HOST?.trim();
-  const firebaseAuthEmulatorHost =
-    emulatorHost === undefined || emulatorHost.length === 0
-      ? null
-      : emulatorHost;
-
+  let firebaseAuthEmulatorHost: string | null = emulatorHost ?? null;
+  if (firebaseAuthEmulatorHost === '') firebaseAuthEmulatorHost = null;
   if (nodeEnv === 'production' && firebaseAuthEmulatorHost !== null) {
     throw new Error(
       'FIREBASE_AUTH_EMULATOR_HOST must not be configured in production',
     );
   }
-
-  const requiredDatabaseUrl = requiredProductionValue(
-    environment,
+  const productionKeys: readonly RequiredProductionKey[] = [
     'DATABASE_URL',
-  );
-  const requiredFirebaseProjectId = requiredProductionValue(
-    environment,
     'FIREBASE_PROJECT_ID',
-  );
-
-  if (nodeEnv === 'production' && requiredDatabaseUrl === undefined) {
-    throw new Error('DATABASE_URL is required in production');
-  }
-
-  if (nodeEnv === 'production' && requiredFirebaseProjectId === undefined) {
-    throw new Error('FIREBASE_PROJECT_ID is required in production');
+    'OBJECT_STORAGE_ACCESS_KEY',
+    'OBJECT_STORAGE_ENDPOINT',
+    'OBJECT_STORAGE_PUBLIC_ENDPOINT',
+    'OBJECT_STORAGE_SECRET_KEY',
+    'RABBITMQ_URL',
+  ];
+  if (nodeEnv === 'production') {
+    for (const key of productionKeys) {
+      const value = environment[key];
+      if (value === undefined || value.trim().length === 0) {
+        throw new Error(`${key} is required in production`);
+      }
+    }
   }
 
   return {
-    databasePoolMax: parsePositiveInteger(
+    databasePoolMax: parseInteger(
       environment.DATABASE_POOL_MAX,
-      DEFAULT_DATABASE_POOL_MAX,
+      10,
       'DATABASE_POOL_MAX',
     ),
     databaseUrl: parseRequiredString(
@@ -130,10 +125,62 @@ export function loadAppConfig(environment: ExternalEnvironment): AppConfig {
     firebaseAuthEmulatorHost,
     firebaseProjectId: parseRequiredString(
       environment.FIREBASE_PROJECT_ID,
-      DEFAULT_FIREBASE_PROJECT_ID,
+      'demo-fiapx',
       'FIREBASE_PROJECT_ID',
     ),
     nodeEnv,
-    port: parsePort(environment.APP_PORT),
+    objectStorageAccessKey: parseRequiredString(
+      environment.OBJECT_STORAGE_ACCESS_KEY,
+      'fiapx',
+      'OBJECT_STORAGE_ACCESS_KEY',
+    ),
+    objectStorageBucket: parseRequiredString(
+      environment.OBJECT_STORAGE_BUCKET,
+      'fiapx-videos',
+      'OBJECT_STORAGE_BUCKET',
+    ),
+    objectStorageEndpoint: parseUrl(
+      environment.OBJECT_STORAGE_ENDPOINT,
+      'http://127.0.0.1:9000',
+      'OBJECT_STORAGE_ENDPOINT',
+    ),
+    objectStoragePublicEndpoint: parseUrl(
+      environment.OBJECT_STORAGE_PUBLIC_ENDPOINT,
+      'http://127.0.0.1:9000',
+      'OBJECT_STORAGE_PUBLIC_ENDPOINT',
+    ),
+    objectStorageSecretKey: parseRequiredString(
+      environment.OBJECT_STORAGE_SECRET_KEY,
+      'fiapx-local-secret',
+      'OBJECT_STORAGE_SECRET_KEY',
+    ),
+    outboxBatchSize: parseInteger(
+      environment.OUTBOX_BATCH_SIZE,
+      20,
+      'OUTBOX_BATCH_SIZE',
+    ),
+    outboxIntervalMs: parseInteger(
+      environment.OUTBOX_INTERVAL_MS,
+      1_000,
+      'OUTBOX_INTERVAL_MS',
+    ),
+    port: parseInteger(environment.APP_PORT, 3000, 'APP_PORT', 1, MAX_PORT),
+    rabbitmqUrl: parseUrl(
+      environment.RABBITMQ_URL,
+      'amqp://fiapx:fiapx@127.0.0.1:5672',
+      'RABBITMQ_URL',
+    ),
+    videoUploadMaxBytes: parseInteger(
+      environment.VIDEO_UPLOAD_MAX_BYTES,
+      2_147_483_648,
+      'VIDEO_UPLOAD_MAX_BYTES',
+    ),
+    videoUploadTtlSeconds: parseInteger(
+      environment.VIDEO_UPLOAD_TTL_SECONDS,
+      900,
+      'VIDEO_UPLOAD_TTL_SECONDS',
+      300,
+      3_600,
+    ),
   };
 }

@@ -46,6 +46,6 @@ class DatabaseLifecycle implements OnApplicationShutdown {
     },
     DatabaseLifecycle,
   ],
-  exports: [DatabaseMigrationRunner, SqlClient],
+  exports: [DatabaseMigrationRunner, Pool, SqlClient],
 })
 export class DatabaseModule {}

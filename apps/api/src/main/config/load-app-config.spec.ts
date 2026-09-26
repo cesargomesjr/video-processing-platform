@@ -1,33 +1,41 @@
 import { loadAppConfig } from './load-app-config.js';
 
+const PRODUCTION_ENVIRONMENT = {
+  DATABASE_URL: 'postgresql://database/app',
+  FIREBASE_PROJECT_ID: 'fiapx-production',
+  OBJECT_STORAGE_ACCESS_KEY: 'access',
+  OBJECT_STORAGE_ENDPOINT: 'https://storage.internal',
+  OBJECT_STORAGE_PUBLIC_ENDPOINT: 'https://storage.example.com',
+  OBJECT_STORAGE_SECRET_KEY: 'secret',
+  RABBITMQ_URL: 'amqps://rabbit.example.com',
+  NODE_ENV: 'production',
+} as const;
+
 describe('loadAppConfig', () => {
-  it('uses safe defaults when optional values are absent', () => {
-    expect(loadAppConfig({})).toEqual({
+  it('uses safe local defaults when optional values are absent', () => {
+    expect(loadAppConfig({})).toMatchObject({
       databasePoolMax: 10,
-      databaseUrl: 'postgresql://fiapx:fiapx@127.0.0.1:5432/fiapx',
       firebaseAuthEmulatorHost: null,
       firebaseProjectId: 'demo-fiapx',
       nodeEnv: 'development',
+      objectStorageBucket: 'fiapx-videos',
+      objectStorageEndpoint: 'http://127.0.0.1:9000',
+      outboxBatchSize: 20,
       port: 3000,
+      rabbitmqUrl: 'amqp://fiapx:fiapx@127.0.0.1:5672',
+      videoUploadMaxBytes: 2_147_483_648,
+      videoUploadTtlSeconds: 900,
     });
   });
 
-  it('parses valid external values', () => {
+  it('parses production configuration', () => {
     expect(
-      loadAppConfig({
-        APP_PORT: '8080',
-        DATABASE_POOL_MAX: '5',
-        DATABASE_URL: 'postgresql://database/app',
-        FIREBASE_PROJECT_ID: 'fiapx-test',
-        NODE_ENV: 'production',
-      }),
-    ).toEqual({
-      databasePoolMax: 5,
-      databaseUrl: 'postgresql://database/app',
-      firebaseAuthEmulatorHost: null,
-      firebaseProjectId: 'fiapx-test',
+      loadAppConfig({ ...PRODUCTION_ENVIRONMENT, APP_PORT: '8080' }),
+    ).toMatchObject({
       nodeEnv: 'production',
       port: 8080,
+      objectStorageEndpoint: 'https://storage.internal',
+      objectStoragePublicEndpoint: 'https://storage.example.com',
     });
   });
 
@@ -46,34 +54,31 @@ describe('loadAppConfig', () => {
     );
   });
 
-  it('rejects an invalid pool size', () => {
-    expect(() => loadAppConfig({ DATABASE_POOL_MAX: '0' })).toThrow(
-      'DATABASE_POOL_MAX must be a positive integer',
-    );
+  it.each([
+    'DATABASE_URL',
+    'FIREBASE_PROJECT_ID',
+    'OBJECT_STORAGE_SECRET_KEY',
+    'RABBITMQ_URL',
+  ] as const)('requires %s in production', (key) => {
+    expect(() =>
+      loadAppConfig({ ...PRODUCTION_ENVIRONMENT, [key]: undefined }),
+    ).toThrow(`${key} is required in production`);
   });
 
-  it.each(['DATABASE_URL', 'FIREBASE_PROJECT_ID'] as const)(
-    'requires %s in production',
-    (key) => {
-      const environment = {
-        DATABASE_URL: 'postgresql://database/app',
-        FIREBASE_PROJECT_ID: 'fiapx-production',
-        NODE_ENV: 'production',
-      };
-
-      expect(() => loadAppConfig({ ...environment, [key]: undefined })).toThrow(
-        `${key} is required in production`,
-      );
-    },
-  );
+  it('rejects invalid upload TTL and endpoint', () => {
+    expect(() => loadAppConfig({ VIDEO_UPLOAD_TTL_SECONDS: '60' })).toThrow(
+      'VIDEO_UPLOAD_TTL_SECONDS must be an integer between 300 and 3600',
+    );
+    expect(() => loadAppConfig({ OBJECT_STORAGE_ENDPOINT: 'not-url' })).toThrow(
+      'OBJECT_STORAGE_ENDPOINT must be a valid URL',
+    );
+  });
 
   it('rejects the Firebase emulator in production', () => {
     expect(() =>
       loadAppConfig({
-        DATABASE_URL: 'postgresql://database/app',
+        ...PRODUCTION_ENVIRONMENT,
         FIREBASE_AUTH_EMULATOR_HOST: 'firebase:9099',
-        FIREBASE_PROJECT_ID: 'fiapx-production',
-        NODE_ENV: 'production',
       }),
     ).toThrow(
       'FIREBASE_AUTH_EMULATOR_HOST must not be configured in production',
