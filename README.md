@@ -22,6 +22,7 @@ Este pacote foi preparado para **execução do projeto**, não apenas como esque
 
 ## Stack proposta
 
+- Firebase Authentication
 - TypeScript
 - Node.js
 - NestJS
@@ -133,6 +134,7 @@ templates/
 npm ci
 npm run compose:up
 curl --fail http://localhost:3000/health/live
+curl --fail http://localhost:3000/health/ready
 ```
 
 Para encerrar:
