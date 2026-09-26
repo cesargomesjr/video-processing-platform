@@ -12,7 +12,7 @@
   "scripts": {
     "prepare": "husky",
     "lint": "eslint . --max-warnings=0",
-    "typecheck": "npm run typecheck --workspaces --if-present",
+    "typecheck": "tsc --noEmit -p tsconfig.json && npm run typecheck --workspaces --if-present",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "build": "npm run build --workspace @fiapx/api && npm run build --workspace @fiapx/worker",
