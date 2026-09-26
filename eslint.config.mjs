@@ -14,6 +14,8 @@ export default tseslint.config(
       '**/node_modules/**',
       'legacy/**',
       'eslint.config.mjs',
+      '.dependency-cruiser.cjs',
+      'jest.config.cjs',
     ],
   },
   js.configs.recommended,
