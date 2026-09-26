@@ -1,0 +1,3 @@
+#!/usr/bin/env sh
+sh scripts/check-protected-branch.sh commit || exit 1
+npx lint-staged
