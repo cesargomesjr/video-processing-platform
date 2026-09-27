@@ -1,9 +1,14 @@
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
 import { VideoRepository } from '../../video-management/application/ports/video-repository';
+import { VideoStorage } from '../../video-management/application/ports/video-storage';
 import { VideoId } from '../../video-management/domain/video-id';
 import { VideoStatus } from '../../video-management/domain/video-status';
 import { VideoProcessingError } from './errors';
 import { MessagePublisher } from './ports/message-publisher';
-import { VideoAnalyzer } from './ports/video-analyzer';
+import { VideoAnalysis, VideoAnalyzer } from './ports/video-analyzer';
 
 export interface AnalyzeVideoInput {
   videoId: string;
@@ -12,6 +17,7 @@ export interface AnalyzeVideoInput {
 export class AnalyzeVideoUseCase {
   public constructor(
     private readonly videoRepository: VideoRepository,
+    private readonly videoStorage: VideoStorage,
     private readonly videoAnalyzer: VideoAnalyzer,
     private readonly messagePublisher: MessagePublisher,
   ) {}
@@ -28,9 +34,11 @@ export class AnalyzeVideoUseCase {
       return;
     }
 
-    let analysis;
+    let analysis: VideoAnalysis;
     try {
-      analysis = await this.videoAnalyzer.analyze(video.storageKey);
+      analysis = await this.withVideoFile(video.storageKey, (filePath) =>
+        this.videoAnalyzer.analyze(filePath),
+      );
     } catch {
       video.transitionTo(VideoStatus.FAILED);
       await this.videoRepository.saveTransition(video, VideoStatus.PENDING);
@@ -56,5 +64,20 @@ export class AnalyzeVideoUseCase {
       height: analysis.height,
       codec: analysis.codec,
     });
+  }
+
+  private async withVideoFile<T>(
+    storageKey: string,
+    handler: (filePath: string) => Promise<T>,
+  ): Promise<T> {
+    const directory = await mkdtemp(join(tmpdir(), 'video-'));
+    const filePath = join(directory, 'video.mp4');
+
+    try {
+      await writeFile(filePath, await this.videoStorage.get(storageKey));
+      return await handler(filePath);
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
   }
 }

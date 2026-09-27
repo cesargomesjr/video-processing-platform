@@ -26,6 +26,10 @@ class FakeVideoStorage implements VideoStorage {
     this.stored.set(key, content);
     return Promise.resolve();
   }
+
+  public get(key: string): Promise<Buffer> {
+    return Promise.resolve(this.stored.get(key) ?? Buffer.alloc(0));
+  }
 }
 
 class FakeMessagePublisher implements MessagePublisher {

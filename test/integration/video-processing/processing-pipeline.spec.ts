@@ -1,10 +1,15 @@
 import { execFile } from 'node:child_process';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 
-import { CreateBucketCommand, GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import {
+  CreateBucketCommand,
+  GetObjectCommand,
+  PutObjectCommand,
+  S3Client,
+} from '@aws-sdk/client-s3';
 import { PostgreSqlContainer, StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import ffmpegInstaller from '@ffmpeg-installer/ffmpeg';
 import ffprobeInstaller from '@ffprobe-installer/ffprobe';
@@ -46,6 +51,7 @@ const execFileAsync = promisify(execFile);
 const BUCKET = 'fiapx-pipeline-test';
 const VIDEO_ID = '11111111-1111-1111-1111-111111111111';
 const OWNER_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+const STORAGE_KEY = `original/${OWNER_ID}/${VIDEO_ID}.mp4`;
 
 class FakeMessagePublisher implements MessagePublisher {
   public readonly analyzed: VideoAnalyzedEvent[] = [];
@@ -148,6 +154,14 @@ describe('video-processing pipeline (integration)', () => {
       '5',
       fixturePath,
     ]);
+
+    await s3Client.send(
+      new PutObjectCommand({
+        Bucket: BUCKET,
+        Key: STORAGE_KEY,
+        Body: await readFile(fixturePath),
+      }),
+    );
   }, 180_000);
 
   afterAll(async () => {
@@ -183,6 +197,7 @@ describe('video-processing pipeline (integration)', () => {
     const videoRepository = new PostgresVideoRepository(dataSource);
     const chunkRepository = new PostgresChunkRepository(dataSource);
     const publisher = new FakeMessagePublisher();
+    const videoStorage = new S3VideoStorage(s3Options);
 
     await videoRepository.save(
       Video.create({
@@ -191,12 +206,13 @@ describe('video-processing pipeline (integration)', () => {
         originalName: 'fixture.mp4',
         format: VideoFormat.create('mp4'),
         size: VideoSize.create(11_570, 100 * 1024 * 1024),
-        storageKey: fixturePath,
+        storageKey: STORAGE_KEY,
       }),
     );
 
     const analyze = new AnalyzeVideoUseCase(
       videoRepository,
+      videoStorage,
       new FFprobeAnalyzer(ffprobeInstaller.path),
       publisher,
     );
@@ -217,6 +233,7 @@ describe('video-processing pipeline (integration)', () => {
     const frameStorage = new S3FrameStorage(s3Options);
     const processChunk = new ProcessChunkUseCase(
       chunkRepository,
+      videoStorage,
       new FFmpegFrameExtractor(ffmpegInstaller.path),
       frameStorage,
       publisher,
@@ -228,7 +245,7 @@ describe('video-processing pipeline (integration)', () => {
         chunkIndex: index,
         startSeconds: window.startMs / 1_000,
         durationSeconds: window.durationMs / 1_000,
-        storageKey: fixturePath,
+        storageKey: STORAGE_KEY,
       });
     }
 
@@ -244,7 +261,7 @@ describe('video-processing pipeline (integration)', () => {
       videoRepository,
       frameStorage,
       new ZipArchiveBuilder(),
-      new S3VideoStorage(s3Options),
+      videoStorage,
       publisher,
     );
     await packageArchive.execute({ videoId: VIDEO_ID });

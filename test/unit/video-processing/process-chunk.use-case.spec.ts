@@ -17,6 +17,7 @@ import {
 } from '../../../src/contexts/video-processing/application/ports/message-publisher';
 import { Chunk } from '../../../src/contexts/video-processing/domain/chunk';
 import { ChunkStatus } from '../../../src/contexts/video-processing/domain/chunk-status';
+import { FakeVideoStorage } from '../video-management/fakes/fake-video-storage';
 
 class InMemoryChunkRepository implements ChunkRepository {
   public readonly chunks: Chunk[] = [];
@@ -168,7 +169,13 @@ describe('ProcessChunkUseCase', () => {
     extractor = new FakeFrameExtractor();
     storage = new FakeFrameStorage();
     publisher = new FakeMessagePublisher();
-    useCase = new ProcessChunkUseCase(repository, extractor, storage, publisher);
+    useCase = new ProcessChunkUseCase(
+      repository,
+      new FakeVideoStorage(),
+      extractor,
+      storage,
+      publisher,
+    );
   });
 
   it('processes a pending chunk and publishes the frame count', async () => {

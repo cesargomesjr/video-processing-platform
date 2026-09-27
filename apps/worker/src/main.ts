@@ -40,7 +40,12 @@ async function main(): Promise<void> {
 
   const pipeline = new VideoProcessingPipeline({
     url: config.rabbitmqUrl,
-    analyze: new AnalyzeVideoUseCase(videoRepository, new FFprobeAnalyzer('ffprobe'), publisher),
+    analyze: new AnalyzeVideoUseCase(
+      videoRepository,
+      videoStorage,
+      new FFprobeAnalyzer('ffprobe'),
+      publisher,
+    ),
     planChunks: new PlanChunksUseCase(
       videoRepository,
       chunkRepository,
@@ -50,6 +55,7 @@ async function main(): Promise<void> {
     ),
     processChunk: new ProcessChunkUseCase(
       chunkRepository,
+      videoStorage,
       new FFmpegFrameExtractor('ffmpeg'),
       frameStorage,
       publisher,

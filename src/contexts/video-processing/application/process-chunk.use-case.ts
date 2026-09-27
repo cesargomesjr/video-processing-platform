@@ -1,3 +1,8 @@
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
+import { VideoStorage } from '../../video-management/application/ports/video-storage';
 import { ChunkStatus } from '../domain/chunk-status';
 import { ExtractFramesSpec } from '../domain/extract-frames-spec';
 import { VideoProcessingError } from './errors';
@@ -17,6 +22,7 @@ export interface ProcessChunkInput {
 export class ProcessChunkUseCase {
   public constructor(
     private readonly chunkRepository: ChunkRepository,
+    private readonly videoStorage: VideoStorage,
     private readonly frameExtractor: FrameExtractor,
     private readonly frameStorage: FrameStorage,
     private readonly messagePublisher: MessagePublisher,
@@ -39,16 +45,19 @@ export class ProcessChunkUseCase {
     }
 
     const spec = ExtractFramesSpec.create(input.startSeconds);
+    const outputDirectory = `/tmp/${input.videoId}/${input.chunkIndex}`;
 
     let frames;
     try {
-      frames = await this.frameExtractor.extract({
-        storageKey: input.storageKey,
-        spec,
-        outputDirectory: `/tmp/${input.videoId}/${input.chunkIndex}`,
-        startSeconds: input.startSeconds,
-        durationSeconds: input.durationSeconds,
-      });
+      frames = await this.withVideoFile(input.storageKey, (filePath) =>
+        this.frameExtractor.extract({
+          storageKey: filePath,
+          spec,
+          outputDirectory,
+          startSeconds: input.startSeconds,
+          durationSeconds: input.durationSeconds,
+        }),
+      );
     } catch {
       await this.chunkRepository.markFailed(input.videoId, input.chunkIndex);
       return;
@@ -72,5 +81,20 @@ export class ProcessChunkUseCase {
       chunkIndex: input.chunkIndex,
       frameCount,
     });
+  }
+
+  private async withVideoFile<T>(
+    storageKey: string,
+    handler: (filePath: string) => Promise<T>,
+  ): Promise<T> {
+    const directory = await mkdtemp(join(tmpdir(), 'video-'));
+    const filePath = join(directory, 'video.mp4');
+
+    try {
+      await writeFile(filePath, await this.videoStorage.get(storageKey));
+      return await handler(filePath);
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
   }
 }

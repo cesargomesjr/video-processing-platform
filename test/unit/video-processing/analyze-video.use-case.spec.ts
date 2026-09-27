@@ -18,6 +18,7 @@ import { VideoFormat } from '../../../src/contexts/video-management/domain/video
 import { VideoId } from '../../../src/contexts/video-management/domain/video-id';
 import { VideoSize } from '../../../src/contexts/video-management/domain/video-size';
 import { VideoStatus } from '../../../src/contexts/video-management/domain/video-status';
+import { FakeVideoStorage } from '../video-management/fakes/fake-video-storage';
 import { InMemoryVideoRepository } from '../video-management/fakes/in-memory-video-repository';
 
 const base = {
@@ -101,7 +102,7 @@ describe('AnalyzeVideoUseCase', () => {
     repository = new InMemoryVideoRepository();
     analyzer = new FakeVideoAnalyzer();
     publisher = new FakeMessagePublisher();
-    useCase = new AnalyzeVideoUseCase(repository, analyzer, publisher);
+    useCase = new AnalyzeVideoUseCase(repository, new FakeVideoStorage(), analyzer, publisher);
   });
 
   it('analyzes a pending video and publishes VideoAnalyzed', async () => {

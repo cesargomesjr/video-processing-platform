@@ -1,4 +1,4 @@
-import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 
 import { VideoStorage } from '../application/ports/video-storage';
 import { S3ConnectionOptions } from './s3-connection-options';
@@ -28,5 +28,16 @@ export class S3VideoStorage implements VideoStorage {
         Body: content,
       }),
     );
+  }
+
+  public async get(key: string): Promise<Buffer> {
+    const output = await this.client.send(
+      new GetObjectCommand({
+        Bucket: this.bucket,
+        Key: key,
+      }),
+    );
+    const body = output.Body === undefined ? null : await output.Body.transformToByteArray();
+    return body === null ? Buffer.alloc(0) : Buffer.from(body);
   }
 }
