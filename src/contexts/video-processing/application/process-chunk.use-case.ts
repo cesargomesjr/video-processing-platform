@@ -56,7 +56,8 @@ export class ProcessChunkUseCase {
 
     try {
       for (const frame of frames) {
-        await this.frameStorage.put(frame.key, frame.content);
+        const frameKey = `frames/${input.videoId}/${input.chunkIndex}/${frame.key}`;
+        await this.frameStorage.put(frameKey, frame.content);
       }
     } catch {
       await this.chunkRepository.markFailed(input.videoId, input.chunkIndex);

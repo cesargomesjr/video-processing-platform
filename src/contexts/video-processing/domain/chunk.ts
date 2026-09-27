@@ -26,7 +26,8 @@ interface ChunkCreateInput {
   totalChunks: number;
 }
 
-interface ChunkReconstituteInput extends ChunkCreateInput {
+interface ChunkReconstituteInput extends Omit<ChunkCreateInput, 'totalChunks'> {
+  totalChunks?: number;
   status: ChunkStatus;
   frameCount: number | null;
   lease?: ChunkLease | null;
@@ -59,11 +60,7 @@ export class Chunk {
       throw new InvalidChunkError('index must be a non-negative integer');
     }
 
-    if (
-      !Number.isInteger(input.totalChunks) ||
-      input.totalChunks <= 0 ||
-      input.index >= input.totalChunks
-    ) {
+    if (input.totalChunks !== undefined && input.index >= input.totalChunks) {
       throw new InvalidChunkError('index must be lower than totalChunks');
     }
 
