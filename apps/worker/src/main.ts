@@ -1,10 +1,22 @@
 import { DataSource } from 'typeorm';
 
+import { AggregateChunksUseCase } from '../../../src/contexts/video-processing/application/aggregate-chunks.use-case';
+import { AnalyzeVideoUseCase } from '../../../src/contexts/video-processing/application/analyze-video.use-case';
+import { PackageArchiveUseCase } from '../../../src/contexts/video-processing/application/package-archive.use-case';
+import { PlanChunksUseCase } from '../../../src/contexts/video-processing/application/plan-chunks.use-case';
+import { ProcessChunkUseCase } from '../../../src/contexts/video-processing/application/process-chunk.use-case';
+import { ChunkCompletionPolicy } from '../../../src/contexts/video-processing/domain/chunk-completion-policy';
+import { FFmpegFrameExtractor } from '../../../src/contexts/video-processing/infrastructure/ffmpeg-frame-extractor';
+import { FFprobeAnalyzer } from '../../../src/contexts/video-processing/infrastructure/ffprobe-analyzer';
+import { RabbitMqMessagePublisher } from '../../../src/contexts/video-processing/infrastructure/rabbitmq-message-publisher';
+import { S3FrameStorage } from '../../../src/contexts/video-processing/infrastructure/s3-frame-storage';
+import { ZipArchiveBuilder } from '../../../src/contexts/video-processing/infrastructure/zip-archive-builder';
+import { ChunkEntity } from '../../../src/contexts/video-processing/infrastructure/typeorm/chunk.entity';
+import { PostgresChunkRepository } from '../../../src/contexts/video-processing/infrastructure/typeorm/postgres-chunk.repository';
+import { VideoProcessingPipeline } from '../../../src/main/video-processing-pipeline';
 import { S3VideoStorage } from '../../../src/contexts/video-management/infrastructure/s3-video-storage';
 import { PostgresVideoRepository } from '../../../src/contexts/video-management/infrastructure/typeorm/postgres-video.repository';
 import { VideoEntity } from '../../../src/contexts/video-management/infrastructure/typeorm/video.entity';
-import { CompleteVideoUseCase } from '../../../src/contexts/video-processing/application/complete-video.use-case';
-import { VideoUploadedConsumer } from '../../../src/contexts/video-processing/presentation/video-uploaded.consumer';
 import { loadAppConfig } from '../../../src/platform/config/app-config.schema';
 import { PinoLogger } from '../../../src/platform/logger/pino.logger';
 
@@ -15,23 +27,53 @@ async function main(): Promise<void> {
   const dataSource = new DataSource({
     type: 'postgres',
     url: config.databaseUrl,
-    entities: [VideoEntity],
+    entities: [VideoEntity, ChunkEntity],
     synchronize: config.nodeEnv !== 'production',
   });
-
   await dataSource.initialize();
 
-  const completeVideo = new CompleteVideoUseCase(
-    new PostgresVideoRepository(dataSource),
-    new S3VideoStorage(config.s3),
-  );
-  const consumer = new VideoUploadedConsumer(config.rabbitmqUrl, completeVideo);
+  const videoRepository = new PostgresVideoRepository(dataSource);
+  const chunkRepository = new PostgresChunkRepository(dataSource);
+  const publisher = new RabbitMqMessagePublisher(config.rabbitmqUrl);
+  const frameStorage = new S3FrameStorage(config.s3);
+  const videoStorage = new S3VideoStorage(config.s3);
 
-  await consumer.start();
+  const pipeline = new VideoProcessingPipeline({
+    url: config.rabbitmqUrl,
+    analyze: new AnalyzeVideoUseCase(videoRepository, new FFprobeAnalyzer('ffprobe'), publisher),
+    planChunks: new PlanChunksUseCase(
+      videoRepository,
+      chunkRepository,
+      publisher,
+      config.processing.chunkSeconds,
+      config.processing.maxChunks,
+    ),
+    processChunk: new ProcessChunkUseCase(
+      chunkRepository,
+      new FFmpegFrameExtractor('ffmpeg'),
+      frameStorage,
+      publisher,
+    ),
+    aggregate: new AggregateChunksUseCase(
+      videoRepository,
+      chunkRepository,
+      new ChunkCompletionPolicy(),
+      publisher,
+    ),
+    packageArchive: new PackageArchiveUseCase(
+      videoRepository,
+      frameStorage,
+      new ZipArchiveBuilder(),
+      videoStorage,
+      publisher,
+    ),
+  });
+
+  await pipeline.start();
   logger.info({}, 'worker.consuming');
 
   const shutdown = async (): Promise<void> => {
-    await consumer.stop();
+    await pipeline.stop();
     await dataSource.destroy();
   };
 
