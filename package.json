@@ -1,0 +1,60 @@
+{
+  "name": "video-processing-platform",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Plataforma distribuída de processamento de vídeos (FIAP X)",
+  "workspaces": [
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "prepare": "husky",
+    "lint": "eslint . --max-warnings=0 && npm run lint:architecture",
+    "lint:architecture": "depcruise src --config .dependency-cruiser.cjs",
+    "typecheck": "tsc --noEmit -p tsconfig.json && npm run typecheck --workspaces --if-present",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "build": "npm run build --workspace @fiapx/api && npm run build --workspace @fiapx/worker",
+    "start:api": "npm run start:prod --workspace @fiapx/api",
+    "start:worker": "npm run start --workspace @fiapx/worker",
+    "test": "jest",
+    "test:unit": "jest --selectProjects unit",
+    "test:integration": "jest --selectProjects integration",
+    "test:e2e": "jest --selectProjects e2e",
+    "test:cov": "jest --coverage",
+    "compose:up": "docker compose -f infra/docker-compose.yml up -d"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^19.8.0",
+    "@commitlint/config-conventional": "^19.8.0",
+    "@eslint/js": "^9.24.0",
+    "@nestjs/cli": "^11.0.0",
+    "@types/jest": "^29.5.14",
+    "@types/node": "^24.0.0",
+    "dependency-cruiser": "^16.10.4",
+    "eslint": "^9.24.0",
+    "eslint-config-prettier": "^10.1.1",
+    "husky": "^9.1.7",
+    "jest": "^29.7.0",
+    "lint-staged": "^15.5.0",
+    "prettier": "^3.5.3",
+    "ts-jest": "^29.2.5",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.30.1"
+  },
+  "lint-staged": {
+    "*.{ts,mts,cts,js,mjs,cjs}": [
+      "prettier --write",
+      "eslint --fix --max-warnings=0 --no-warn-ignored"
+    ],
+    "*.{json,md,yml,yaml}": [
+      "prettier --write"
+    ]
+  },
+  "dependencies": {
+    "pino": "^9.14.0",
+    "zod": "^3.25.76"
+  }
+}
