@@ -1,4 +1,4 @@
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, LessThan, Repository } from 'typeorm';
 
 import { PaginatedVideos, VideoRepository } from '../../application/ports/video-repository';
 import { Video } from '../../domain/video';
@@ -56,6 +56,15 @@ export class PostgresVideoRepository implements VideoRepository {
       items: items.map((entity) => this.toDomain(entity)),
       total,
     };
+  }
+
+  public async findByStatusOlderThan(status: VideoStatus, before: Date): Promise<Video[]> {
+    const entities = await this.repository.find({
+      where: { status: status.value, updatedAt: LessThan(before) },
+      order: { createdAt: 'ASC' },
+    });
+
+    return entities.map((entity) => this.toDomain(entity));
   }
 
   private toDomain(entity: VideoEntity): Video {

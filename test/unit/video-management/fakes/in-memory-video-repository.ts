@@ -4,6 +4,7 @@ import {
 } from '../../../../src/contexts/video-management/application/ports/video-repository';
 import { Video } from '../../../../src/contexts/video-management/domain/video';
 import { VideoId } from '../../../../src/contexts/video-management/domain/video-id';
+import { VideoStatus } from '../../../../src/contexts/video-management/domain/video-status';
 
 export class InMemoryVideoRepository implements VideoRepository {
   private readonly videosById = new Map<string, Video>();
@@ -30,5 +31,13 @@ export class InMemoryVideoRepository implements VideoRepository {
       items: items.slice(offset, offset + pageSize),
       total: items.length,
     });
+  }
+
+  public findByStatusOlderThan(status: VideoStatus, before: Date): Promise<Video[]> {
+    return Promise.resolve(
+      [...this.videosById.values()].filter(
+        (video) => video.status === status && before.getTime() > 0,
+      ),
+    );
   }
 }
