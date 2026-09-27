@@ -52,7 +52,14 @@ import {
     {
       provide: SIGNED_URL_GENERATOR,
       inject: [APP_CONFIG],
-      useFactory: (config: AppConfig): S3SignedUrlGenerator => new S3SignedUrlGenerator(config.s3),
+      useFactory: (config: AppConfig): S3SignedUrlGenerator =>
+        new S3SignedUrlGenerator({
+          endpoint: config.s3.publicEndpoint,
+          accessKey: config.s3.accessKey,
+          secretKey: config.s3.secretKey,
+          bucket: config.s3.bucket,
+          region: config.s3.region,
+        }),
     },
     {
       provide: MESSAGE_PUBLISHER,

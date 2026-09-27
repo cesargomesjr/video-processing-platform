@@ -17,6 +17,7 @@ const rawEnvSchema = z.object({
   S3_SECRET_KEY: nonEmptyString('S3_SECRET_KEY'),
   S3_BUCKET: nonEmptyString('S3_BUCKET'),
   S3_REGION: nonEmptyString('S3_REGION').default('us-east-1'),
+  S3_PUBLIC_ENDPOINT: nonEmptyString('S3_PUBLIC_ENDPOINT').default('http://localhost:9000'),
   JWT_SECRET: nonEmptyString('JWT_SECRET'),
   JWT_EXPIRES_IN: nonEmptyString('JWT_EXPIRES_IN').default('15m'),
   CHUNK_SECONDS: positiveInteger('CHUNK_SECONDS').default(10),
@@ -35,6 +36,7 @@ const appConfigSchema = rawEnvSchema.transform((raw) => ({
   redisUrl: raw.REDIS_URL,
   s3: {
     endpoint: raw.S3_ENDPOINT,
+    publicEndpoint: raw.S3_PUBLIC_ENDPOINT,
     accessKey: raw.S3_ACCESS_KEY,
     secretKey: raw.S3_SECRET_KEY,
     bucket: raw.S3_BUCKET,
