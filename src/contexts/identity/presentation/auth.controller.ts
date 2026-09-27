@@ -5,19 +5,24 @@ import {
   Controller,
   Get,
   HttpCode,
+  HttpException,
   HttpStatus,
   InternalServerErrorException,
   Post,
   Req,
+  Res,
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
+import type { Request, Response } from 'express';
 
 import { AuthenticateUseCase } from '../application/authenticate.use-case';
 import { EmailAlreadyRegisteredError, InvalidCredentialsError } from '../application/errors';
 import { RegisterUserUseCase } from '../application/register-user.use-case';
 import { InvalidEmailError } from '../domain/email';
 import { WeakPasswordError } from '../domain/plain-password';
+import { RateLimitExceededError } from '../../../platform/rate-limit/rate-limiter';
+import { RateLimitService } from '../../../platform/rate-limit/rate-limit.service';
 import { JwtGuard } from './jwt.guard';
 
 interface AuthInput {
@@ -34,6 +39,7 @@ export class AuthController {
   public constructor(
     private readonly registerUser: RegisterUserUseCase,
     private readonly authenticate: AuthenticateUseCase,
+    private readonly rateLimitService: RateLimitService,
   ) {}
 
   @Post('register')
@@ -51,8 +57,23 @@ export class AuthController {
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  public async login(@Body() body: unknown): Promise<{ accessToken: string; expiresIn: string }> {
+  public async login(
+    @Body() body: unknown,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<{ accessToken: string; expiresIn: string }> {
     const input = this.parseAuthInput(body);
+
+    try {
+      await this.rateLimitService.assertLoginAllowed(request.ip ?? 'unknown', input.email);
+    } catch (error: unknown) {
+      if (error instanceof RateLimitExceededError) {
+        response.setHeader('Retry-After', String(error.retryAfterSeconds));
+        throw new HttpException('Too Many Requests', HttpStatus.TOO_MANY_REQUESTS);
+      }
+
+      throw error;
+    }
 
     try {
       return await this.authenticate.execute(input);

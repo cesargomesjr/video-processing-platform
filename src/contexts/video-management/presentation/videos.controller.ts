@@ -4,6 +4,7 @@ import {
   Controller,
   Get,
   HttpCode,
+  HttpException,
   HttpStatus,
   NotFoundException,
   Param,
@@ -12,14 +13,18 @@ import {
   Post,
   Query,
   Req,
+  Res,
   ServiceUnavailableException,
   UploadedFile,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import type { Response } from 'express';
 
 import { JwtGuard } from '../../identity/presentation/jwt.guard';
+import { RateLimitExceededError } from '../../../platform/rate-limit/rate-limiter';
+import { RateLimitService } from '../../../platform/rate-limit/rate-limit.service';
 import {
   InvalidPaginationError,
   VideoContentMismatchError,
@@ -48,6 +53,7 @@ export class VideosController {
     private readonly listUserVideos: ListUserVideosUseCase,
     private readonly getVideoStatus: GetVideoStatusUseCase,
     private readonly requestDownload: RequestDownloadUseCase,
+    private readonly rateLimitService: RateLimitService,
   ) {}
 
   @Post()
@@ -56,10 +62,22 @@ export class VideosController {
   @UseInterceptors(FileInterceptor('file'))
   public async upload(
     @Req() request: AuthenticatedRequest,
+    @Res({ passthrough: true }) response: Response,
     @UploadedFile() file: Express.Multer.File | undefined,
   ): Promise<UploadVideoResult> {
     if (file === undefined) {
       throw new BadRequestException('file is required');
+    }
+
+    try {
+      await this.rateLimitService.assertUploadAllowed(request.user.id);
+    } catch (error: unknown) {
+      if (error instanceof RateLimitExceededError) {
+        response.setHeader('Retry-After', String(error.retryAfterSeconds));
+        throw new HttpException('Too Many Requests', HttpStatus.TOO_MANY_REQUESTS);
+      }
+
+      throw error;
     }
 
     try {

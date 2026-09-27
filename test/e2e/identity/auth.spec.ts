@@ -6,6 +6,7 @@ import { PostgreSqlContainer, StartedPostgreSqlContainer } from '@testcontainers
 import request from 'supertest';
 
 import { AppModule } from '../../../apps/api/src/app.module';
+import { RateLimitService } from '../../../src/platform/rate-limit/rate-limit.service';
 
 describe('Auth (e2e)', () => {
   let app: INestApplication;
@@ -27,7 +28,13 @@ describe('Auth (e2e)', () => {
     process.env.S3_BUCKET = 'unused';
     process.env.JWT_SECRET = 'e2e-secret';
 
-    const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
+      .overrideProvider(RateLimitService)
+      .useValue({
+        assertLoginAllowed: async (): Promise<void> => {},
+        assertUploadAllowed: async (): Promise<void> => {},
+      })
+      .compile();
 
     app = moduleRef.createNestApplication();
     await app.init();

@@ -17,6 +17,7 @@ import request from 'supertest';
 import { DataSource } from 'typeorm';
 
 import { AppModule } from '../../../apps/api/src/app.module';
+import { RateLimitService } from '../../../src/platform/rate-limit/rate-limit.service';
 import { AggregateChunksUseCase } from '../../../src/contexts/video-processing/application/aggregate-chunks.use-case';
 import { AnalyzeVideoUseCase } from '../../../src/contexts/video-processing/application/analyze-video.use-case';
 import { PackageArchiveUseCase } from '../../../src/contexts/video-processing/application/package-archive.use-case';
@@ -127,7 +128,13 @@ describe('Video processing full flow (e2e)', () => {
     process.env.S3_BUCKET = BUCKET;
     process.env.JWT_SECRET = 'e2e-secret';
 
-    const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
+      .overrideProvider(RateLimitService)
+      .useValue({
+        assertLoginAllowed: async (): Promise<void> => {},
+        assertUploadAllowed: async (): Promise<void> => {},
+      })
+      .compile();
     app = moduleRef.createNestApplication();
     await app.init();
     httpServer = app.getHttpServer() as Server;

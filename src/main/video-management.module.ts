@@ -17,6 +17,7 @@ import { AppConfig } from '../platform/config/app-config.schema';
 import { APP_CONFIG } from '../platform/config/app-config.token';
 import { ConfigModule } from './config.module';
 import { DatabaseModule } from './database.module';
+import { RateLimitModule } from './rate-limit.module';
 import {
   DATA_SOURCE,
   MESSAGE_PUBLISHER,
@@ -28,7 +29,7 @@ import {
 } from './tokens';
 
 @Module({
-  imports: [ConfigModule, DatabaseModule],
+  imports: [ConfigModule, DatabaseModule, RateLimitModule],
   controllers: [VideosController],
   providers: [
     VideoOwnershipPolicy,

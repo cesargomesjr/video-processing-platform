@@ -6,6 +6,7 @@ import { PostgreSqlContainer, StartedPostgreSqlContainer } from '@testcontainers
 import request from 'supertest';
 
 import { AppModule } from '../../../apps/api/src/app.module';
+import { RateLimitService } from '../../../src/platform/rate-limit/rate-limit.service';
 import {
   MessagePublisher,
   VideoUploadedEvent,
@@ -82,6 +83,11 @@ describe('Videos (e2e)', () => {
       .useValue(fakePublisher)
       .overrideProvider(SIGNED_URL_GENERATOR)
       .useValue(new FakeSignedUrlGenerator())
+      .overrideProvider(RateLimitService)
+      .useValue({
+        assertLoginAllowed: async (): Promise<void> => {},
+        assertUploadAllowed: async (): Promise<void> => {},
+      })
       .compile();
 
     app = moduleRef.createNestApplication();
