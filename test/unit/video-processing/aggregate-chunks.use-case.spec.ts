@@ -1,14 +1,16 @@
-import { PlanChunksUseCase } from '../../../src/contexts/video-processing/application/plan-chunks.use-case';
+import { AggregateChunksUseCase } from '../../../src/contexts/video-processing/application/aggregate-chunks.use-case';
 import { VideoProcessingError } from '../../../src/contexts/video-processing/application/errors';
 import { ChunkRepository } from '../../../src/contexts/video-processing/application/ports/chunk-repository';
 import {
-  MessagePublisher,
   AllChunksCompletedEvent,
   ChunkCompletedEvent,
+  MessagePublisher,
   ProcessVideoChunkEvent,
   VideoAnalyzedEvent,
 } from '../../../src/contexts/video-processing/application/ports/message-publisher';
 import { Chunk } from '../../../src/contexts/video-processing/domain/chunk';
+import { ChunkCompletionPolicy } from '../../../src/contexts/video-processing/domain/chunk-completion-policy';
+import { ChunkStatus } from '../../../src/contexts/video-processing/domain/chunk-status';
 import { Video } from '../../../src/contexts/video-management/domain/video';
 import { VideoFormat } from '../../../src/contexts/video-management/domain/video-format';
 import { VideoId } from '../../../src/contexts/video-management/domain/video-id';
@@ -16,7 +18,7 @@ import { VideoSize } from '../../../src/contexts/video-management/domain/video-s
 import { VideoStatus } from '../../../src/contexts/video-management/domain/video-status';
 import { InMemoryVideoRepository } from '../video-management/fakes/in-memory-video-repository';
 
-const base = {
+const videoBase = {
   id: VideoId.create('video-1'),
   ownerId: 'user-1',
   originalName: 'movie.mp4',
@@ -79,18 +81,18 @@ class InMemoryChunkRepository implements ChunkRepository {
 }
 
 class FakeMessagePublisher implements MessagePublisher {
-  public readonly processed: ProcessVideoChunkEvent[] = [];
   public readonly analyzed: VideoAnalyzedEvent[] = [];
+  public readonly processed: ProcessVideoChunkEvent[] = [];
   public readonly completed: ChunkCompletedEvent[] = [];
   public readonly all: AllChunksCompletedEvent[] = [];
 
-  public publishProcessVideoChunk(event: ProcessVideoChunkEvent): Promise<void> {
-    this.processed.push(event);
+  public publishVideoAnalyzed(event: VideoAnalyzedEvent): Promise<void> {
+    this.analyzed.push(event);
     return Promise.resolve();
   }
 
-  public publishVideoAnalyzed(event: VideoAnalyzedEvent): Promise<void> {
-    this.analyzed.push(event);
+  public publishProcessVideoChunk(event: ProcessVideoChunkEvent): Promise<void> {
+    this.processed.push(event);
     return Promise.resolve();
   }
 
@@ -105,86 +107,129 @@ class FakeMessagePublisher implements MessagePublisher {
   }
 }
 
-describe('PlanChunksUseCase', () => {
-  let repository: InMemoryVideoRepository;
+describe('AggregateChunksUseCase', () => {
+  let videoRepository: InMemoryVideoRepository;
   let chunkRepository: InMemoryChunkRepository;
   let publisher: FakeMessagePublisher;
-  let useCase: PlanChunksUseCase;
+  let useCase: AggregateChunksUseCase;
 
   beforeEach(() => {
-    repository = new InMemoryVideoRepository();
+    videoRepository = new InMemoryVideoRepository();
     chunkRepository = new InMemoryChunkRepository();
     publisher = new FakeMessagePublisher();
-    useCase = new PlanChunksUseCase(repository, chunkRepository, publisher, 10, 100);
+    useCase = new AggregateChunksUseCase(
+      videoRepository,
+      chunkRepository,
+      new ChunkCompletionPolicy(),
+      publisher,
+    );
   });
 
-  it('plans and publishes chunks for an analyzed video', async () => {
-    const analyzed = Video.reconstitute({
-      ...base,
-      status: VideoStatus.ANALYZED,
-      zipKey: null,
-      durationMs: 11_000,
-    });
-    await repository.save(analyzed);
+  async function seedProcessingVideo(): Promise<void> {
+    await videoRepository.save(
+      Video.reconstitute({
+        ...videoBase,
+        status: VideoStatus.PROCESSING,
+        zipKey: null,
+        durationMs: 20_000,
+      }),
+    );
+  }
 
-    await useCase.execute({ videoId: 'video-1' });
-
-    const saved = await repository.findById(VideoId.create('video-1'));
-    expect(saved?.status).toBe(VideoStatus.PROCESSING);
-    expect(chunkRepository.chunks).toHaveLength(2);
-    expect(publisher.processed).toEqual([
-      {
+  it('publishes AllChunksCompleted when the last chunk completes', async () => {
+    await seedProcessingVideo();
+    await chunkRepository.saveMany([
+      Chunk.reconstitute({
         videoId: 'video-1',
-        chunkIndex: 0,
-        startSeconds: 0,
-        durationSeconds: 10,
-        storageKey: 'original/user-1/video-1.mp4',
-      },
-      {
+        index: 0,
+        totalChunks: 2,
+        status: ChunkStatus.COMPLETED,
+        frameCount: 3,
+      }),
+      Chunk.reconstitute({
         videoId: 'video-1',
-        chunkIndex: 1,
-        startSeconds: 10,
-        durationSeconds: 1,
-        storageKey: 'original/user-1/video-1.mp4',
-      },
+        index: 1,
+        totalChunks: 2,
+        status: ChunkStatus.COMPLETED,
+        frameCount: 4,
+      }),
     ]);
+
+    await useCase.execute({ videoId: 'video-1' });
+
+    const video = await videoRepository.findById(VideoId.create('video-1'));
+    expect(video?.status).toBe(VideoStatus.AGGREGATING);
+    expect(publisher.all).toEqual([{ videoId: 'video-1', totalChunks: 2, totalFrames: 7 }]);
   });
 
-  it('is idempotent across repeated runs', async () => {
-    const analyzed = Video.reconstitute({
-      ...base,
-      status: VideoStatus.ANALYZED,
-      zipKey: null,
-      durationMs: 20_000,
-    });
-    await repository.save(analyzed);
+  it('publishes only one event for duplicate aggregation', async () => {
+    await seedProcessingVideo();
+    await chunkRepository.saveMany([
+      Chunk.reconstitute({
+        videoId: 'video-1',
+        index: 0,
+        totalChunks: 1,
+        status: ChunkStatus.COMPLETED,
+        frameCount: 2,
+      }),
+    ]);
 
     await useCase.execute({ videoId: 'video-1' });
     await useCase.execute({ videoId: 'video-1' });
 
-    expect(chunkRepository.chunks).toHaveLength(2);
-    expect(publisher.processed).toHaveLength(2);
+    expect(publisher.all).toHaveLength(1);
   });
 
-  it('does nothing for a video that is not analyzed', async () => {
-    await repository.save(Video.create(base));
+  it('does nothing while chunks are missing', async () => {
+    await seedProcessingVideo();
+    await chunkRepository.saveMany([
+      Chunk.reconstitute({
+        videoId: 'video-1',
+        index: 0,
+        totalChunks: 2,
+        status: ChunkStatus.COMPLETED,
+        frameCount: 2,
+      }),
+      Chunk.reconstitute({
+        videoId: 'video-1',
+        index: 1,
+        totalChunks: 2,
+        status: ChunkStatus.PENDING,
+        frameCount: null,
+      }),
+    ]);
 
     await useCase.execute({ videoId: 'video-1' });
 
-    expect(chunkRepository.chunks).toHaveLength(0);
-    expect(publisher.processed).toHaveLength(0);
+    const video = await videoRepository.findById(VideoId.create('video-1'));
+    expect(video?.status).toBe(VideoStatus.PROCESSING);
+    expect(publisher.all).toHaveLength(0);
   });
 
-  it('throws when the duration is missing', async () => {
-    const analyzed = Video.reconstitute({
-      ...base,
-      status: VideoStatus.ANALYZED,
-      zipKey: null,
-      durationMs: null,
-    });
-    await repository.save(analyzed);
+  it('marks the video as FAILED when any chunk failed', async () => {
+    await seedProcessingVideo();
+    await chunkRepository.saveMany([
+      Chunk.reconstitute({
+        videoId: 'video-1',
+        index: 0,
+        totalChunks: 2,
+        status: ChunkStatus.COMPLETED,
+        frameCount: 2,
+      }),
+      Chunk.reconstitute({
+        videoId: 'video-1',
+        index: 1,
+        totalChunks: 2,
+        status: ChunkStatus.FAILED,
+        frameCount: null,
+      }),
+    ]);
 
-    await expect(useCase.execute({ videoId: 'video-1' })).rejects.toThrow(VideoProcessingError);
+    await useCase.execute({ videoId: 'video-1' });
+
+    const video = await videoRepository.findById(VideoId.create('video-1'));
+    expect(video?.status).toBe(VideoStatus.FAILED);
+    expect(publisher.all).toHaveLength(0);
   });
 
   it('throws when the video does not exist', async () => {

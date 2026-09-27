@@ -20,8 +20,15 @@ export interface ChunkCompletedEvent {
   frameCount: number;
 }
 
+export interface AllChunksCompletedEvent {
+  videoId: string;
+  totalChunks: number;
+  totalFrames: number;
+}
+
 export interface MessagePublisher {
   publishVideoAnalyzed(event: VideoAnalyzedEvent): Promise<void>;
   publishProcessVideoChunk(event: ProcessVideoChunkEvent): Promise<void>;
   publishChunkCompleted(event: ChunkCompletedEvent): Promise<void>;
+  publishAllChunksCompleted(event: AllChunksCompletedEvent): Promise<void>;
 }

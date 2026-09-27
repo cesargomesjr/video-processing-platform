@@ -7,6 +7,7 @@ import {
 } from '../../../src/contexts/video-processing/application/ports/frame-extractor';
 import { FrameStorage } from '../../../src/contexts/video-processing/application/ports/frame-storage';
 import {
+  AllChunksCompletedEvent,
   ChunkCompletedEvent,
   MessagePublisher,
   ProcessVideoChunkEvent,
@@ -30,6 +31,10 @@ class InMemoryChunkRepository implements ChunkRepository {
     }
 
     return Promise.resolve();
+  }
+
+  public findByVideoId(videoId: string): Promise<Chunk[]> {
+    return Promise.resolve(this.chunks.filter((chunk) => chunk.videoId === videoId));
   }
 
   public findByVideoAndIndex(videoId: string, index: number): Promise<Chunk | null> {
@@ -96,11 +101,17 @@ class FakeFrameStorage implements FrameStorage {
 
 class FakeMessagePublisher implements MessagePublisher {
   public readonly completed: ChunkCompletedEvent[] = [];
+  public readonly all: AllChunksCompletedEvent[] = [];
   public readonly processed: ProcessVideoChunkEvent[] = [];
   public readonly analyzed: VideoAnalyzedEvent[] = [];
 
   public publishChunkCompleted(event: ChunkCompletedEvent): Promise<void> {
     this.completed.push(event);
+    return Promise.resolve();
+  }
+
+  public publishAllChunksCompleted(event: AllChunksCompletedEvent): Promise<void> {
+    this.all.push(event);
     return Promise.resolve();
   }
 
