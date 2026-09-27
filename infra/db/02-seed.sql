@@ -1,8 +1,8 @@
--- Seed opcional para desenvolvimento local.
+-- Seed de desenvolvimento local.
 --
--- O hash abaixo é apenas um placeholder. Para gerar um hash válido de bcrypt:
---   node -e "console.log(require('bcrypt').hashSync('SuaSenhaForte1', 10))"
---
--- INSERT INTO users (email, password_hash)
--- VALUES ('demo@fiapx.com', '<bcrypt-hash>')
--- ON CONFLICT (email) DO NOTHING;
+-- Usuário demo:
+--   email: demo@fiapx.com
+--   senha: Str0ngPass1
+INSERT INTO users (email, password_hash)
+VALUES ('demo@fiapx.com', '$2b$10$2vsWvp7s.KaOu7X/NsgpkOWS7HAPBc73udDZGsmTL.B5flF0W0ai6')
+ON CONFLICT (email) DO NOTHING;
