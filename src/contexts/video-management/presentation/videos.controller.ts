@@ -24,6 +24,7 @@ import type { Response } from 'express';
 
 import { JwtGuard } from '../../identity/presentation/jwt.guard';
 import { RateLimitExceededError } from '../../../platform/rate-limit/rate-limiter';
+import { MetricsService } from '../../../platform/metrics/metrics.service';
 import { RateLimitService } from '../../../platform/rate-limit/rate-limit.service';
 import {
   InvalidPaginationError,
@@ -54,6 +55,7 @@ export class VideosController {
     private readonly getVideoStatus: GetVideoStatusUseCase,
     private readonly requestDownload: RequestDownloadUseCase,
     private readonly rateLimitService: RateLimitService,
+    private readonly metrics: MetricsService,
   ) {}
 
   @Post()
@@ -81,11 +83,13 @@ export class VideosController {
     }
 
     try {
-      return await this.uploadVideo.execute({
+      const result = await this.uploadVideo.execute({
         ownerId: request.user.id,
         originalName: file.originalname,
         content: file.buffer,
       });
+      this.metrics.incrementVideos('PENDING');
+      return result;
     } catch (error: unknown) {
       this.toHttpError(error);
     }
