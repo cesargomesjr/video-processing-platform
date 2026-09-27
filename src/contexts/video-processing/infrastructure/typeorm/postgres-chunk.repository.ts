@@ -23,6 +23,8 @@ export class PostgresChunkRepository implements ChunkRepository {
     const values = chunks.map((chunk) => ({
       videoId: chunk.videoId,
       chunkIndex: chunk.index,
+      startMs: '0',
+      durationMs: '1',
       status: chunk.status.value,
       frameCount: chunk.frameCount,
       workerId: chunk.lease?.workerId ?? null,
