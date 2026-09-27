@@ -84,6 +84,29 @@ services:
       retries: 10
       start_period: 10s
 
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: fiapx-prometheus
+    ports:
+      - '9090:9090'
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    depends_on:
+      - api
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: fiapx-grafana
+    ports:
+      - '3001:3000'
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+
   api:
     build:
       context: ..
@@ -143,6 +166,8 @@ services:
 
 volumes:
   postgres-data:
+  prometheus-data:
+  grafana-data:
   rabbitmq-data:
   redis-data:
   minio-data:
