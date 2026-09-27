@@ -13,6 +13,7 @@ import {
   ProcessVideoChunkEvent,
   VideoAnalyzedEvent,
   VideoCompletedEvent,
+  VideoProcessingFailedEvent,
 } from '../../../src/contexts/video-processing/application/ports/message-publisher';
 import { Chunk } from '../../../src/contexts/video-processing/domain/chunk';
 import { ChunkStatus } from '../../../src/contexts/video-processing/domain/chunk-status';
@@ -112,6 +113,7 @@ class FakeMessagePublisher implements MessagePublisher {
   public readonly completed: ChunkCompletedEvent[] = [];
   public readonly all: AllChunksCompletedEvent[] = [];
   public readonly videoCompleted: VideoCompletedEvent[] = [];
+  public readonly failed: VideoProcessingFailedEvent[] = [];
   public readonly processed: ProcessVideoChunkEvent[] = [];
   public readonly analyzed: VideoAnalyzedEvent[] = [];
 
@@ -127,6 +129,11 @@ class FakeMessagePublisher implements MessagePublisher {
 
   public publishVideoCompleted(event: VideoCompletedEvent): Promise<void> {
     this.videoCompleted.push(event);
+    return Promise.resolve();
+  }
+
+  public publishVideoProcessingFailed(event: VideoProcessingFailedEvent): Promise<void> {
+    this.failed.push(event);
     return Promise.resolve();
   }
 

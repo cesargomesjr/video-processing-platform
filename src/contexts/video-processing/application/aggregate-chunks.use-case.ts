@@ -40,6 +40,12 @@ export class AggregateChunksUseCase {
     if (failed !== undefined) {
       video.transitionTo(VideoStatus.FAILED);
       await this.videoRepository.save(video);
+      await this.messagePublisher.publishVideoProcessingFailed({
+        videoId: video.id.value,
+        ownerId: video.ownerId,
+        reason: `Chunk ${failed.index} failed`,
+        failedAt: new Date(),
+      });
       return;
     }
 

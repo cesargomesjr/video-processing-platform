@@ -32,10 +32,18 @@ export interface VideoCompletedEvent {
   frameCount: number;
 }
 
+export interface VideoProcessingFailedEvent {
+  videoId: string;
+  ownerId: string;
+  reason: string;
+  failedAt: Date;
+}
+
 export interface MessagePublisher {
   publishVideoAnalyzed(event: VideoAnalyzedEvent): Promise<void>;
   publishProcessVideoChunk(event: ProcessVideoChunkEvent): Promise<void>;
   publishChunkCompleted(event: ChunkCompletedEvent): Promise<void>;
   publishAllChunksCompleted(event: AllChunksCompletedEvent): Promise<void>;
   publishVideoCompleted(event: VideoCompletedEvent): Promise<void>;
+  publishVideoProcessingFailed(event: VideoProcessingFailedEvent): Promise<void>;
 }

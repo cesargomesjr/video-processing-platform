@@ -8,6 +8,7 @@ import {
   ProcessVideoChunkEvent,
   VideoAnalyzedEvent,
   VideoCompletedEvent,
+  VideoProcessingFailedEvent,
 } from '../../../src/contexts/video-processing/application/ports/message-publisher';
 import { Chunk } from '../../../src/contexts/video-processing/domain/chunk';
 import { ChunkCompletionPolicy } from '../../../src/contexts/video-processing/domain/chunk-completion-policy';
@@ -87,6 +88,7 @@ class FakeMessagePublisher implements MessagePublisher {
   public readonly completed: ChunkCompletedEvent[] = [];
   public readonly all: AllChunksCompletedEvent[] = [];
   public readonly videoCompleted: VideoCompletedEvent[] = [];
+  public readonly failed: VideoProcessingFailedEvent[] = [];
 
   public publishVideoAnalyzed(event: VideoAnalyzedEvent): Promise<void> {
     this.analyzed.push(event);
@@ -110,6 +112,11 @@ class FakeMessagePublisher implements MessagePublisher {
 
   public publishVideoCompleted(event: VideoCompletedEvent): Promise<void> {
     this.videoCompleted.push(event);
+    return Promise.resolve();
+  }
+
+  public publishVideoProcessingFailed(event: VideoProcessingFailedEvent): Promise<void> {
+    this.failed.push(event);
     return Promise.resolve();
   }
 }
@@ -237,6 +244,9 @@ describe('AggregateChunksUseCase', () => {
     const video = await videoRepository.findById(VideoId.create('video-1'));
     expect(video?.status).toBe(VideoStatus.FAILED);
     expect(publisher.all).toHaveLength(0);
+    expect(publisher.failed).toHaveLength(1);
+    expect(publisher.failed[0]?.videoId).toBe('video-1');
+    expect(publisher.failed[0]?.ownerId).toBe('user-1');
   });
 
   it('throws when the video does not exist', async () => {
