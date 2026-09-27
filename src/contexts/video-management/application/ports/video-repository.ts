@@ -9,6 +9,7 @@ export interface PaginatedVideos {
 
 export interface VideoRepository {
   save(video: Video): Promise<void>;
+  saveTransition(video: Video, expectedStatus: VideoStatus): Promise<boolean>;
   findById(id: VideoId): Promise<Video | null>;
   delete(id: VideoId): Promise<void>;
   findByOwnerId(ownerId: string, page: number, pageSize: number): Promise<PaginatedVideos>;

@@ -51,7 +51,10 @@ export class PlanChunksUseCase {
     await this.chunkRepository.saveMany(chunks);
 
     video.transitionTo(VideoStatus.PROCESSING);
-    await this.videoRepository.save(video);
+    const claimed = await this.videoRepository.saveTransition(video, VideoStatus.ANALYZED);
+    if (!claimed) {
+      return;
+    }
 
     for (const [index, window] of plan.windows.entries()) {
       await this.messagePublisher.publishProcessVideoChunk({

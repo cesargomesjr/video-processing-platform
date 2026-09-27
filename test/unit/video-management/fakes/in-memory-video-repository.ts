@@ -14,6 +14,11 @@ export class InMemoryVideoRepository implements VideoRepository {
     return Promise.resolve();
   }
 
+  public saveTransition(video: Video, expectedStatus: VideoStatus): Promise<boolean> {
+    this.videosById.set(video.id.value, video);
+    return Promise.resolve(expectedStatus.value.length > 0);
+  }
+
   public findById(id: VideoId): Promise<Video | null> {
     return Promise.resolve(this.videosById.get(id.value) ?? null);
   }

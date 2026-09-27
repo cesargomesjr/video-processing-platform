@@ -58,7 +58,10 @@ export class PackageArchiveUseCase {
       await this.videoStorage.put(zipKey, zipBuffer);
 
       video.complete(zipKey);
-      await this.videoRepository.save(video);
+      const completed = await this.videoRepository.saveTransition(video, VideoStatus.AGGREGATING);
+      if (!completed) {
+        return;
+      }
 
       await this.messagePublisher.publishVideoCompleted({
         videoId: video.id.value,
@@ -72,6 +75,6 @@ export class PackageArchiveUseCase {
 
   private async markFailed(video: Video): Promise<void> {
     video.transitionTo(VideoStatus.FAILED);
-    await this.videoRepository.save(video);
+    await this.videoRepository.saveTransition(video, VideoStatus.AGGREGATING);
   }
 }

@@ -39,7 +39,11 @@ export class AggregateChunksUseCase {
     const failed = chunks.find((chunk) => chunk.status === ChunkStatus.FAILED);
     if (failed !== undefined) {
       video.transitionTo(VideoStatus.FAILED);
-      await this.videoRepository.save(video);
+      const failedUpdate = await this.videoRepository.saveTransition(video, VideoStatus.PROCESSING);
+      if (!failedUpdate) {
+        return;
+      }
+
       await this.messagePublisher.publishVideoProcessingFailed({
         videoId: video.id.value,
         ownerId: video.ownerId,
@@ -56,7 +60,10 @@ export class AggregateChunksUseCase {
     }
 
     video.transitionTo(VideoStatus.AGGREGATING);
-    await this.videoRepository.save(video);
+    const aggregated = await this.videoRepository.saveTransition(video, VideoStatus.PROCESSING);
+    if (!aggregated) {
+      return;
+    }
 
     const totalFrames = chunks.reduce((sum, chunk) => sum + (chunk.frameCount ?? 0), 0);
     await this.messagePublisher.publishAllChunksCompleted({

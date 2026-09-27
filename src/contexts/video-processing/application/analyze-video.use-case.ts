@@ -33,18 +33,21 @@ export class AnalyzeVideoUseCase {
       analysis = await this.videoAnalyzer.analyze(video.storageKey);
     } catch {
       video.transitionTo(VideoStatus.FAILED);
-      await this.videoRepository.save(video);
+      await this.videoRepository.saveTransition(video, VideoStatus.PENDING);
       return;
     }
 
     if (!Number.isSafeInteger(analysis.durationMs) || analysis.durationMs <= 0) {
       video.transitionTo(VideoStatus.FAILED);
-      await this.videoRepository.save(video);
+      await this.videoRepository.saveTransition(video, VideoStatus.PENDING);
       return;
     }
 
     video.markAnalyzed(analysis.durationMs);
-    await this.videoRepository.save(video);
+    const analyzed = await this.videoRepository.saveTransition(video, VideoStatus.PENDING);
+    if (!analyzed) {
+      return;
+    }
 
     await this.messagePublisher.publishVideoAnalyzed({
       videoId: video.id.value,

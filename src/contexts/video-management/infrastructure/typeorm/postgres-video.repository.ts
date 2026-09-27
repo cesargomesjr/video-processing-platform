@@ -31,6 +31,24 @@ export class PostgresVideoRepository implements VideoRepository {
     await this.repository.save(entity);
   }
 
+  public async saveTransition(video: Video, expectedStatus: VideoStatus): Promise<boolean> {
+    const result = await this.repository.update(
+      { id: video.id.value, status: expectedStatus.value },
+      {
+        ownerId: video.ownerId,
+        originalName: video.originalName,
+        format: video.format.value,
+        sizeBytes: BigInt(video.size.bytes).toString(),
+        durationMs: video.durationMs === null ? null : BigInt(video.durationMs).toString(),
+        storageKey: video.storageKey,
+        zipKey: video.zipKey,
+        status: video.status.value,
+      },
+    );
+
+    return (result.affected ?? 0) > 0;
+  }
+
   public async findById(id: VideoId): Promise<Video | null> {
     const entity = await this.repository.findOneBy({ id: id.value });
     return entity === null ? null : this.toDomain(entity);
