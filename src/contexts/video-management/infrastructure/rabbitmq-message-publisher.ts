@@ -1,4 +1,5 @@
 import { Channel, ChannelModel, connect } from 'amqplib';
+import { generateTraceparent } from '../../../platform/tracing/traceparent';
 
 import { MessagePublisher, VideoUploadedEvent } from '../application/ports/message-publisher';
 
@@ -19,6 +20,7 @@ export class RabbitMQMessagePublisher implements MessagePublisher {
       persistent: true,
       contentType: 'application/json',
       messageId: event.videoId,
+      headers: { traceparent: generateTraceparent() },
     });
   }
 

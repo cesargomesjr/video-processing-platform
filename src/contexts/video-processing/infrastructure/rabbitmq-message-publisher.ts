@@ -1,4 +1,5 @@
 import { Channel, ChannelModel, connect } from 'amqplib';
+import { generateTraceparent } from '../../../platform/tracing/traceparent';
 
 import {
   MessagePublisher,
@@ -48,6 +49,7 @@ export class RabbitMqMessagePublisher implements MessagePublisher {
     channel.publish(EXCHANGE, routingKey, Buffer.from(JSON.stringify(event)), {
       persistent: true,
       contentType: 'application/json',
+      headers: { traceparent: generateTraceparent() },
     });
   }
 
