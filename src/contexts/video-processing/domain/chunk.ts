@@ -24,6 +24,8 @@ interface ChunkCreateInput {
   videoId: string;
   index: number;
   totalChunks: number;
+  startMs?: number;
+  durationMs?: number;
 }
 
 interface ChunkReconstituteInput extends Omit<ChunkCreateInput, 'totalChunks'> {
@@ -40,11 +42,15 @@ export class Chunk {
     private _status: ChunkStatus,
     private _frameCount: number | null,
     private _lease: ChunkLease | null,
+    private readonly _startMs: number,
+    private readonly _durationMs: number,
   ) {}
 
   public static create(input: ChunkCreateInput): Chunk {
     return Chunk.reconstitute({
       ...input,
+      startMs: input.startMs ?? 0,
+      durationMs: input.durationMs ?? 1,
       status: ChunkStatus.PENDING,
       frameCount: null,
       lease: null,
@@ -71,12 +77,25 @@ export class Chunk {
       throw new InvalidChunkError('frameCount must be a non-negative integer or null');
     }
 
+    const startMs = input.startMs ?? 0;
+    const durationMs = input.durationMs ?? 1;
+
+    if (!Number.isInteger(startMs) || startMs < 0) {
+      throw new InvalidChunkError('startMs must be a non-negative integer');
+    }
+
+    if (!Number.isInteger(durationMs) || durationMs <= 0) {
+      throw new InvalidChunkError('durationMs must be a positive integer');
+    }
+
     return new Chunk(
       input.videoId,
       input.index,
       input.status,
       input.frameCount,
       input.lease ?? null,
+      startMs,
+      durationMs,
     );
   }
 
@@ -152,6 +171,14 @@ export class Chunk {
 
   public get lease(): ChunkLease | null {
     return this._lease;
+  }
+
+  public get startMs(): number {
+    return this._startMs;
+  }
+
+  public get durationMs(): number {
+    return this._durationMs;
   }
 
   private transitionTo(next: ChunkStatus): void {

@@ -39,11 +39,18 @@ export class PlanChunksUseCase {
     const plan = ChunkPlan.create(video.durationMs, this.chunkSeconds, this.maxChunks);
     const chunks: Chunk[] = [];
     for (let index = 0; index < plan.windows.length; index += 1) {
+      const window = plan.windows[index];
+      if (window === undefined) {
+        continue;
+      }
+
       chunks.push(
         Chunk.create({
           videoId: video.id.value,
           index,
           totalChunks: plan.windows.length,
+          startMs: window.startMs,
+          durationMs: window.durationMs,
         }),
       );
     }

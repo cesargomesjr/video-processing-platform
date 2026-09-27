@@ -23,8 +23,8 @@ export class PostgresChunkRepository implements ChunkRepository {
     const values = chunks.map((chunk) => ({
       videoId: chunk.videoId,
       chunkIndex: chunk.index,
-      startMs: '0',
-      durationMs: '1',
+      startMs: BigInt(chunk.startMs).toString(),
+      durationMs: BigInt(chunk.durationMs).toString(),
       status: chunk.status.value,
       frameCount: chunk.frameCount,
       workerId: chunk.lease?.workerId ?? null,
@@ -104,6 +104,8 @@ export class PostgresChunkRepository implements ChunkRepository {
       index: entity.chunkIndex,
       status: ChunkStatus.fromValue(entity.status),
       frameCount: entity.frameCount,
+      startMs: Number(entity.startMs),
+      durationMs: Number(entity.durationMs),
       lease:
         entity.workerId !== null && entity.lockedUntil !== null
           ? ChunkLease.create(entity.workerId, entity.lockedUntil)
