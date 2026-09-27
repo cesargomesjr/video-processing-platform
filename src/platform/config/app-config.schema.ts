@@ -21,7 +21,7 @@ const rawEnvSchema = z.object({
   JWT_EXPIRES_IN: nonEmptyString('JWT_EXPIRES_IN').default('15m'),
   CHUNK_SECONDS: positiveInteger('CHUNK_SECONDS').default(10),
   MAX_CHUNKS: positiveInteger('MAX_CHUNKS').default(100),
-  MAX_VIDEO_SIZE_BYTES: positiveInteger('MAX_VIDEO_SIZE_BYTES').default(100 * 1024 * 1024),
+  MAX_VIDEO_SIZE_BYTES: positiveInteger('MAX_VIDEO_SIZE_BYTES').default(500 * 1024 * 1024),
   DOWNLOAD_URL_TTL_SECONDS: positiveInteger('DOWNLOAD_URL_TTL_SECONDS').default(300),
   SMTP_HOST: nonEmptyString('SMTP_HOST').default('localhost'),
   SMTP_PORT: positiveInteger('SMTP_PORT').default(1025),

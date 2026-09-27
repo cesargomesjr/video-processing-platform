@@ -124,6 +124,7 @@ services:
       S3_SECRET_KEY: minioadmin
       S3_BUCKET: fiapx
       S3_REGION: us-east-1
+      MAX_VIDEO_SIZE_BYTES: 524288000
       JWT_SECRET: change-me
       SMTP_HOST: mailhog
       SMTP_PORT: 1025
