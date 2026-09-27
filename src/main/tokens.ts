@@ -1,0 +1,5 @@
+export const DATA_SOURCE = 'DATA_SOURCE';
+export const USER_REPOSITORY = 'USER_REPOSITORY';
+export const PASSWORD_HASHER = 'PASSWORD_HASHER';
+export const TOKEN_ISSUER = 'TOKEN_ISSUER';
+export const ID_GENERATOR = 'ID_GENERATOR';
