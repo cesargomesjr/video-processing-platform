@@ -46,6 +46,8 @@ export class ProcessChunkUseCase {
         storageKey: input.storageKey,
         spec,
         outputDirectory: `/tmp/${input.videoId}/${input.chunkIndex}`,
+        startSeconds: input.startSeconds,
+        durationSeconds: input.durationSeconds,
       });
     } catch {
       await this.chunkRepository.markFailed(input.videoId, input.chunkIndex);

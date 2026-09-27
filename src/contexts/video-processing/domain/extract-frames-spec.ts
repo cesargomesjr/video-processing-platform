@@ -23,6 +23,10 @@ export class ExtractFramesSpec {
     return this._startNumber;
   }
 
+  public get outputPattern(): string {
+    return 'frame_%06d.png';
+  }
+
   public frameName(second: number): string {
     return `frame_${String(Math.floor(second)).padStart(6, '0')}.png`;
   }

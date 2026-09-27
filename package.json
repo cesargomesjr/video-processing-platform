@@ -30,6 +30,8 @@
     "@commitlint/cli": "^19.8.0",
     "@commitlint/config-conventional": "^19.8.0",
     "@eslint/js": "^9.24.0",
+    "@ffmpeg-installer/ffmpeg": "^1.1.0",
+    "@ffprobe-installer/ffprobe": "^2.1.2",
     "@nestjs/cli": "^11.0.0",
     "@nestjs/platform-express": "^11.2.6",
     "@nestjs/testing": "^11.2.6",

@@ -10,5 +10,7 @@ export interface FrameExtractor {
     storageKey: string;
     spec: ExtractFramesSpec;
     outputDirectory: string;
+    startSeconds: number;
+    durationSeconds: number;
   }): Promise<ExtractedFrame[]>;
 }
