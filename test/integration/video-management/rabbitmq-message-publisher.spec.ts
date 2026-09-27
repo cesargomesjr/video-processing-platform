@@ -56,6 +56,7 @@ describe('RabbitMQMessagePublisher', () => {
     };
 
     await publisher.publishVideoUploaded(event);
+    await publisher.publishVideoUploaded(event);
 
     let message = await channel.get(queueName, { noAck: true });
     for (let attempt = 0; attempt < 10 && message === false; attempt += 1) {

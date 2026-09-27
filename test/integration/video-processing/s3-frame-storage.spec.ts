@@ -68,5 +68,6 @@ describe('S3FrameStorage', () => {
       'frames/video-1/frame_000000.png',
       'frames/video-1/frame_000001.png',
     ]);
+    await expect(storage.list('frames/missing/')).resolves.toEqual([]);
   });
 });
