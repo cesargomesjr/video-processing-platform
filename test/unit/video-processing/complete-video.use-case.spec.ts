@@ -54,6 +54,7 @@ describe('CompleteVideoUseCase', () => {
       storageKey: 'original/user-1/video-1.mp4',
       status: VideoStatus.COMPLETED,
       zipKey: 'archives/video-1.zip',
+      durationMs: null,
     });
     await repository.save(completed);
 
@@ -75,6 +76,7 @@ describe('CompleteVideoUseCase', () => {
       storageKey: 'original/user-1/video-1.mp4',
       status: VideoStatus.PROCESSING,
       zipKey: null,
+      durationMs: null,
     });
     await repository.save(processing);
 

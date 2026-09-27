@@ -28,6 +28,12 @@ export class InvalidVideoStorageKeyError extends DomainError {
   }
 }
 
+export class InvalidVideoDurationError extends DomainError {
+  public constructor() {
+    super('Video duration must be a positive integer or null');
+  }
+}
+
 export class InvalidVideoStatusTransitionError extends DomainError {
   public constructor(from: VideoStatus, to: VideoStatus) {
     super(`Invalid video status transition: ${from.value} -> ${to.value}`);
@@ -46,6 +52,7 @@ interface VideoCreateInput {
 interface VideoReconstituteInput extends VideoCreateInput {
   status: VideoStatus;
   zipKey: string | null;
+  durationMs: number | null;
 }
 
 export class Video {
@@ -58,6 +65,7 @@ export class Video {
     private readonly _storageKey: string,
     private _status: VideoStatus,
     private _zipKey: string | null,
+    private _durationMs: number | null,
   ) {}
 
   public static create(input: VideoCreateInput): Video {
@@ -65,6 +73,7 @@ export class Video {
       ...input,
       status: VideoStatus.PENDING,
       zipKey: null,
+      durationMs: null,
     });
   }
 
@@ -79,6 +88,13 @@ export class Video {
 
     if (input.storageKey.trim().length === 0) {
       throw new InvalidVideoStorageKeyError();
+    }
+
+    if (
+      input.durationMs !== null &&
+      (!Number.isSafeInteger(input.durationMs) || input.durationMs <= 0)
+    ) {
+      throw new InvalidVideoDurationError();
     }
 
     if (input.status === VideoStatus.COMPLETED && input.zipKey === null) {
@@ -98,6 +114,7 @@ export class Video {
       input.storageKey,
       input.status,
       input.zipKey,
+      input.durationMs,
     );
   }
 
@@ -107,6 +124,15 @@ export class Video {
     }
 
     this._status = next;
+  }
+
+  public markAnalyzed(durationMs: number): void {
+    if (!Number.isSafeInteger(durationMs) || durationMs <= 0) {
+      throw new InvalidVideoDurationError();
+    }
+
+    this.transitionTo(VideoStatus.ANALYZED);
+    this._durationMs = durationMs;
   }
 
   public complete(zipKey: string): void {
@@ -156,5 +182,9 @@ export class Video {
 
   public get zipKey(): string | null {
     return this._zipKey;
+  }
+
+  public get durationMs(): number | null {
+    return this._durationMs;
   }
 }

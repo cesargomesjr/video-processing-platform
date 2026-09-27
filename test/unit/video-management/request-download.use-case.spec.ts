@@ -37,6 +37,7 @@ function completedVideo(ownerId: string, videoId: string): Video {
     storageKey: `original/${ownerId}/${videoId}.mp4`,
     status: VideoStatus.COMPLETED,
     zipKey: `archive/${videoId}.zip`,
+    durationMs: null,
   });
 }
 

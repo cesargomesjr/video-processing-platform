@@ -49,7 +49,12 @@ describe('Video', () => {
   });
 
   it('reconstitutes a persisted video', () => {
-    const video = Video.reconstitute({ ...base, status: VideoStatus.ANALYZED, zipKey: null });
+    const video = Video.reconstitute({
+      ...base,
+      status: VideoStatus.ANALYZED,
+      zipKey: null,
+      durationMs: null,
+    });
 
     expect(video.status).toBe(VideoStatus.ANALYZED);
     expect(video.zipKey).toBeNull();
@@ -57,13 +62,23 @@ describe('Video', () => {
 
   it('rejects a zip key on a non-completed video', () => {
     expect(() =>
-      Video.reconstitute({ ...base, status: VideoStatus.PROCESSING, zipKey: 'archive.zip' }),
+      Video.reconstitute({
+        ...base,
+        status: VideoStatus.PROCESSING,
+        zipKey: 'archive.zip',
+        durationMs: null,
+      }),
     ).toThrow(InvalidVideoZipKeyError);
   });
 
   it('rejects a completed video without a zip key', () => {
     expect(() =>
-      Video.reconstitute({ ...base, status: VideoStatus.COMPLETED, zipKey: null }),
+      Video.reconstitute({
+        ...base,
+        status: VideoStatus.COMPLETED,
+        zipKey: null,
+        durationMs: null,
+      }),
     ).toThrow(InvalidVideoZipKeyError);
   });
 
@@ -84,7 +99,12 @@ describe('Video', () => {
   });
 
   it('requires complete() to reach COMPLETED', () => {
-    const video = Video.reconstitute({ ...base, status: VideoStatus.AGGREGATING, zipKey: null });
+    const video = Video.reconstitute({
+      ...base,
+      status: VideoStatus.AGGREGATING,
+      zipKey: null,
+      durationMs: null,
+    });
 
     expect(() => video.transitionTo(VideoStatus.COMPLETED)).toThrow(
       InvalidVideoStatusTransitionError,
@@ -92,7 +112,12 @@ describe('Video', () => {
   });
 
   it('completes from AGGREGATING with a zip key', () => {
-    const video = Video.reconstitute({ ...base, status: VideoStatus.AGGREGATING, zipKey: null });
+    const video = Video.reconstitute({
+      ...base,
+      status: VideoStatus.AGGREGATING,
+      zipKey: null,
+      durationMs: null,
+    });
 
     video.complete('archive/video-1.zip');
 
@@ -101,7 +126,12 @@ describe('Video', () => {
   });
 
   it('rejects completing with a blank zip key', () => {
-    const video = Video.reconstitute({ ...base, status: VideoStatus.AGGREGATING, zipKey: null });
+    const video = Video.reconstitute({
+      ...base,
+      status: VideoStatus.AGGREGATING,
+      zipKey: null,
+      durationMs: null,
+    });
 
     expect(() => video.complete('   ')).toThrow(InvalidVideoZipKeyError);
   });

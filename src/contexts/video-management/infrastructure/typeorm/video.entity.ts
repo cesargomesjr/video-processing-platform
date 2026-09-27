@@ -30,6 +30,9 @@ export class VideoEntity {
   @Column({ name: 'size_bytes', type: 'bigint' })
   public sizeBytes!: string;
 
+  @Column({ name: 'duration_ms', type: 'bigint', nullable: true })
+  public durationMs!: string | null;
+
   @Column({ name: 'storage_key', type: 'varchar', length: 1024 })
   public storageKey!: string;
 

@@ -22,6 +22,7 @@ export class PostgresVideoRepository implements VideoRepository {
       originalName: video.originalName,
       format: video.format.value,
       sizeBytes: BigInt(video.size.bytes).toString(),
+      durationMs: video.durationMs === null ? null : BigInt(video.durationMs).toString(),
       storageKey: video.storageKey,
       zipKey: video.zipKey,
       status: video.status.value,
@@ -67,6 +68,7 @@ export class PostgresVideoRepository implements VideoRepository {
       storageKey: entity.storageKey,
       status: VideoStatus.fromValue(entity.status),
       zipKey: entity.zipKey,
+      durationMs: entity.durationMs === null ? null : Number(entity.durationMs),
     });
   }
 }
