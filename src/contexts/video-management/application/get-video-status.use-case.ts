@@ -12,6 +12,11 @@ export interface GetVideoStatusInput {
 export interface VideoStatusView {
   videoId: string;
   status: VideoStatusValue;
+  originalName: string;
+  format: string;
+  sizeBytes: number;
+  durationMs: number | null;
+  progress: number;
 }
 
 export class GetVideoStatusUseCase {
@@ -30,6 +35,30 @@ export class GetVideoStatusUseCase {
 
     this.ownershipPolicy.assertCanAccess(video, input.userId);
 
-    return { videoId: video.id.value, status: video.status.value };
+    return {
+      videoId: video.id.value,
+      status: video.status.value,
+      originalName: video.originalName,
+      format: video.format.value,
+      sizeBytes: video.size.bytes,
+      durationMs: video.durationMs,
+      progress: this.progressFor(video.status.value),
+    };
+  }
+
+  private progressFor(status: VideoStatusValue): number {
+    switch (status) {
+      case 'PENDING':
+        return 10;
+      case 'ANALYZED':
+        return 30;
+      case 'PROCESSING':
+        return 65;
+      case 'AGGREGATING':
+        return 85;
+      case 'COMPLETED':
+      case 'FAILED':
+        return 100;
+    }
   }
 }

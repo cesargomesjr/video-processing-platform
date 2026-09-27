@@ -101,7 +101,7 @@ export class VideosController {
     @Req() request: AuthenticatedRequest,
     @Query('page', new ParseIntPipe({ optional: true })) page?: number,
     @Query('pageSize', new ParseIntPipe({ optional: true })) pageSize?: number,
-  ): Promise<{ items: Array<{ videoId: string; status: VideoStatusValue }>; total: number }> {
+  ): Promise<{ items: VideoStatusView[]; total: number }> {
     const result = await this.listUserVideos.execute({
       ownerId: request.user.id,
       page,
@@ -112,6 +112,11 @@ export class VideosController {
       items: result.items.map((video) => ({
         videoId: video.id.value,
         status: video.status.value,
+        originalName: video.originalName,
+        format: video.format.value,
+        sizeBytes: video.size.bytes,
+        durationMs: video.durationMs,
+        progress: this.progressFor(video.status.value),
       })),
       total: result.total,
     };
@@ -170,5 +175,21 @@ export class VideosController {
     }
 
     throw error;
+  }
+
+  private progressFor(status: VideoStatusValue): number {
+    switch (status) {
+      case 'PENDING':
+        return 10;
+      case 'ANALYZED':
+        return 30;
+      case 'PROCESSING':
+        return 65;
+      case 'AGGREGATING':
+        return 85;
+      case 'COMPLETED':
+      case 'FAILED':
+        return 100;
+    }
   }
 }

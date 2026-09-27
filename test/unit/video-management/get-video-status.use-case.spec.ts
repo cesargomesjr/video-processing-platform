@@ -34,6 +34,11 @@ describe('GetVideoStatusUseCase', () => {
     await expect(useCase.execute({ videoId: 'video-1', userId: 'user-1' })).resolves.toEqual({
       videoId: 'video-1',
       status: 'PENDING',
+      originalName: 'video-1.mp4',
+      format: 'mp4',
+      sizeBytes: 1024,
+      durationMs: null,
+      progress: 10,
     });
   });
 

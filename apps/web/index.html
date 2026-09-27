@@ -3,16 +3,29 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>FIAP X — Vídeos</title>
-    <link rel="stylesheet" href="styles.css" />
+    <title>FIAP X - Vídeos</title>
+    <link rel="stylesheet" href="styles.css?v=2" />
   </head>
   <body>
-    <main class="container">
-      <h1>FIAP X — Plataforma de vídeos</h1>
+    <main class="shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">FIAP X</p>
+          <h1>Seus vídeos</h1>
+        </div>
+        <div class="session">
+          <span id="session-label">Sessão offline</span>
+          <button id="logout" class="ghost hidden" type="button">Sair</button>
+        </div>
+      </header>
 
-      <section id="auth-section" class="card">
-        <h2>Acesso</h2>
-        <form id="auth-form">
+      <section id="auth-section" class="auth-panel">
+        <div class="auth-copy">
+          <p class="eyebrow">Área de trabalho</p>
+          <h2>Envie seu vídeo. Acompanhe cada etapa.</h2>
+          <p>Os arquivos processados e os downloads ficam reunidos aqui.</p>
+        </div>
+        <form id="auth-form" class="panel">
           <label>
             E-mail
             <input id="email" name="email" type="email" autocomplete="email" required />
@@ -27,41 +40,51 @@
               required
             />
           </label>
-          <div class="actions">
-            <button type="submit">Entrar / Cadastrar</button>
-          </div>
+          <button type="submit">Entrar ou criar conta</button>
         </form>
       </section>
 
-      <section id="videos-section" class="card hidden">
-        <h2>Meus vídeos</h2>
-
-        <form id="upload-form">
-          <label>
-            Vídeo
-            <input id="file" name="file" type="file" accept=".mp4,.avi,.mov,.mkv,.wmv,.flv,.webm" required />
+      <section id="videos-section" class="workspace hidden">
+        <form id="upload-form" class="upload-panel">
+          <div>
+            <p class="eyebrow">Novo processamento</p>
+            <h2>Enviar vídeo</h2>
+          </div>
+          <label class="file-drop">
+            <input
+              id="file"
+              name="file"
+              type="file"
+              accept=".mp4,.avi,.mov,.mkv,.wmv,.flv,.webm"
+              required
+            />
+            <span id="file-label">Selecionar vídeo</span>
           </label>
+          <p class="file-hint">MP4, AVI, MOV, MKV, WMV, FLV ou WebM</p>
           <div class="actions">
             <button type="submit">Enviar</button>
-            <button id="refresh" type="button">Atualizar lista</button>
+            <button id="refresh" class="secondary" type="button">Atualizar</button>
           </div>
         </form>
 
-        <table>
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Status</th>
-              <th>Ação</th>
-            </tr>
-          </thead>
-          <tbody id="videos-body"></tbody>
-        </table>
+        <section class="queue-panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Fila</p>
+              <h2>Minhas tarefas</h2>
+            </div>
+            <span id="poll-label">Atualização automática</span>
+          </div>
+          <div id="videos-list" class="video-list"></div>
+          <p id="empty-state" class="empty-state hidden">
+            Seus vídeos aparecerão aqui após o primeiro envio.
+          </p>
+        </section>
       </section>
 
       <p id="message" class="message" role="status"></p>
     </main>
 
-    <script src="app.js"></script>
+    <script src="app.js?v=2"></script>
   </body>
 </html>

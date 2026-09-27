@@ -137,12 +137,27 @@ describe('Videos (e2e)', () => {
       .expect(200)
       .expect((response) => {
         const result = response.body as {
-          items: Array<{ videoId: string; status: string }>;
+          items: Array<{
+            videoId: string;
+            status: string;
+            originalName: string;
+            format: string;
+            sizeBytes: number;
+            durationMs: number | null;
+            progress: number;
+          }>;
           total: number;
         };
         expect(result.total).toBe(1);
         expect(result.items[0]?.videoId).toBe(body.videoId);
-        expect(result.items[0]?.status).toBe('PENDING');
+        expect(result.items[0]).toMatchObject({
+          status: 'PENDING',
+          originalName: 'movie.mp4',
+          format: 'mp4',
+          sizeBytes: mp4Content.length,
+          durationMs: null,
+          progress: 10,
+        });
       });
 
     await request(httpServer)
@@ -150,7 +165,15 @@ describe('Videos (e2e)', () => {
       .set('Authorization', `Bearer ${token}`)
       .expect(200)
       .expect((response) => {
-        expect(response.body).toEqual({ videoId: body.videoId, status: 'PENDING' });
+        expect(response.body).toEqual({
+          videoId: body.videoId,
+          status: 'PENDING',
+          originalName: 'movie.mp4',
+          format: 'mp4',
+          sizeBytes: mp4Content.length,
+          durationMs: null,
+          progress: 10,
+        });
       });
 
     expect(fakeStorage.stored.size).toBe(1);

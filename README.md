@@ -159,7 +159,7 @@ A API sobe em `http://localhost:3000`.
 Sirva a pasta `apps/web` com qualquer servidor estático, por exemplo:
 
 ```bash
-npx serve apps/web
+npx http-server apps/web -p 5173 -c-1
 ```
 
 A página fala com a API em `http://localhost:3000` (ajuste a constante `API_BASE` em
