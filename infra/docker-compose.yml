@@ -144,6 +144,7 @@ services:
       context: ..
       dockerfile: infra/docker/worker.Dockerfile
     container_name: fiapx-worker
+    restart: unless-stopped
     environment:
       NODE_ENV: production
       DATABASE_URL: postgres://fiapx:fiapx@postgres:5432/fiapx
