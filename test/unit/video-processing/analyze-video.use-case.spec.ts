@@ -6,6 +6,7 @@ import {
 } from '../../../src/contexts/video-processing/application/ports/video-analyzer';
 import {
   MessagePublisher,
+  ProcessVideoChunkEvent,
   VideoAnalyzedEvent,
 } from '../../../src/contexts/video-processing/application/ports/message-publisher';
 import { Video } from '../../../src/contexts/video-management/domain/video';
@@ -49,9 +50,15 @@ class FakeVideoAnalyzer implements VideoAnalyzer {
 
 class FakeMessagePublisher implements MessagePublisher {
   public readonly published: VideoAnalyzedEvent[] = [];
+  public readonly processed: ProcessVideoChunkEvent[] = [];
 
   public publishVideoAnalyzed(event: VideoAnalyzedEvent): Promise<void> {
     this.published.push(event);
+    return Promise.resolve();
+  }
+
+  public publishProcessVideoChunk(event: ProcessVideoChunkEvent): Promise<void> {
+    this.processed.push(event);
     return Promise.resolve();
   }
 }
