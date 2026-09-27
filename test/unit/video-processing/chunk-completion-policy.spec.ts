@@ -11,6 +11,7 @@ function chunk(index: number, status: ChunkStatus): Chunk {
     index,
     totalChunks: 3,
     status,
+    frameCount: null,
   });
 }
 

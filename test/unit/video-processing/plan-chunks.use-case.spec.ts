@@ -3,6 +3,7 @@ import { VideoProcessingError } from '../../../src/contexts/video-processing/app
 import { ChunkRepository } from '../../../src/contexts/video-processing/application/ports/chunk-repository';
 import {
   MessagePublisher,
+  ChunkCompletedEvent,
   ProcessVideoChunkEvent,
   VideoAnalyzedEvent,
 } from '../../../src/contexts/video-processing/application/ports/message-publisher';
@@ -39,11 +40,43 @@ class InMemoryChunkRepository implements ChunkRepository {
 
     return Promise.resolve();
   }
+
+  public findByVideoAndIndex(videoId: string, index: number): Promise<Chunk | null> {
+    const chunk = this.chunks.find((item) => item.videoId === videoId && item.index === index);
+    return Promise.resolve(chunk ?? null);
+  }
+
+  public claim(videoId: string, index: number): Promise<Chunk | null> {
+    const chunk = this.chunks.find((item) => item.videoId === videoId && item.index === index);
+    if (chunk === undefined) {
+      return Promise.resolve(null);
+    }
+
+    try {
+      chunk.markAsProcessing();
+      return Promise.resolve(chunk);
+    } catch {
+      return Promise.resolve(null);
+    }
+  }
+
+  public markCompleted(videoId: string, index: number, frameCount: number): Promise<void> {
+    const chunk = this.chunks.find((item) => item.videoId === videoId && item.index === index);
+    chunk?.markAsCompleted(frameCount);
+    return Promise.resolve();
+  }
+
+  public markFailed(videoId: string, index: number): Promise<void> {
+    const chunk = this.chunks.find((item) => item.videoId === videoId && item.index === index);
+    chunk?.markAsFailed();
+    return Promise.resolve();
+  }
 }
 
 class FakeMessagePublisher implements MessagePublisher {
   public readonly processed: ProcessVideoChunkEvent[] = [];
   public readonly analyzed: VideoAnalyzedEvent[] = [];
+  public readonly completed: ChunkCompletedEvent[] = [];
 
   public publishProcessVideoChunk(event: ProcessVideoChunkEvent): Promise<void> {
     this.processed.push(event);
@@ -52,6 +85,11 @@ class FakeMessagePublisher implements MessagePublisher {
 
   public publishVideoAnalyzed(event: VideoAnalyzedEvent): Promise<void> {
     this.analyzed.push(event);
+    return Promise.resolve();
+  }
+
+  public publishChunkCompleted(event: ChunkCompletedEvent): Promise<void> {
+    this.completed.push(event);
     return Promise.resolve();
   }
 }

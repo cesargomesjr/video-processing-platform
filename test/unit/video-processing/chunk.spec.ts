@@ -28,7 +28,7 @@ describe('Chunk', () => {
   });
 
   it('reconstitutes a persisted chunk', () => {
-    const chunk = Chunk.reconstitute({ ...base, status: ChunkStatus.COMPLETED });
+    const chunk = Chunk.reconstitute({ ...base, status: ChunkStatus.COMPLETED, frameCount: null });
 
     expect(chunk.status).toBe(ChunkStatus.COMPLETED);
   });
@@ -42,21 +42,21 @@ describe('Chunk', () => {
   });
 
   it('does not let a completed chunk return to processing', () => {
-    const chunk = Chunk.reconstitute({ ...base, status: ChunkStatus.COMPLETED });
+    const chunk = Chunk.reconstitute({ ...base, status: ChunkStatus.COMPLETED, frameCount: null });
 
     expect(() => chunk.markAsProcessing()).toThrow(ChunkAlreadyCompletedError);
   });
 
   it('completes a processing chunk', () => {
-    const chunk = Chunk.reconstitute({ ...base, status: ChunkStatus.PROCESSING });
+    const chunk = Chunk.reconstitute({ ...base, status: ChunkStatus.PROCESSING, frameCount: null });
 
-    chunk.markAsCompleted();
+    chunk.markAsCompleted(5);
 
     expect(chunk.status).toBe(ChunkStatus.COMPLETED);
   });
 
   it('fails a processing chunk', () => {
-    const chunk = Chunk.reconstitute({ ...base, status: ChunkStatus.PROCESSING });
+    const chunk = Chunk.reconstitute({ ...base, status: ChunkStatus.PROCESSING, frameCount: null });
 
     chunk.markAsFailed();
 
@@ -64,7 +64,7 @@ describe('Chunk', () => {
   });
 
   it('retries a failed chunk', () => {
-    const chunk = Chunk.reconstitute({ ...base, status: ChunkStatus.FAILED });
+    const chunk = Chunk.reconstitute({ ...base, status: ChunkStatus.FAILED, frameCount: null });
 
     chunk.retry();
 
@@ -74,6 +74,6 @@ describe('Chunk', () => {
   it('rejects invalid transitions', () => {
     const chunk = Chunk.create(base);
 
-    expect(() => chunk.markAsCompleted()).toThrow(InvalidChunkStatusTransitionError);
+    expect(() => chunk.markAsCompleted(5)).toThrow(InvalidChunkStatusTransitionError);
   });
 });

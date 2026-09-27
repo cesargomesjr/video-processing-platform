@@ -27,6 +27,7 @@ interface ChunkCreateInput {
 
 interface ChunkReconstituteInput extends ChunkCreateInput {
   status: ChunkStatus;
+  frameCount: number | null;
 }
 
 export class Chunk {
@@ -34,10 +35,15 @@ export class Chunk {
     private readonly _videoId: string,
     private readonly _index: number,
     private _status: ChunkStatus,
+    private _frameCount: number | null,
   ) {}
 
   public static create(input: ChunkCreateInput): Chunk {
-    return Chunk.reconstitute({ ...input, status: ChunkStatus.PENDING });
+    return Chunk.reconstitute({
+      ...input,
+      status: ChunkStatus.PENDING,
+      frameCount: null,
+    });
   }
 
   public static reconstitute(input: ChunkReconstituteInput): Chunk {
@@ -57,7 +63,14 @@ export class Chunk {
       throw new InvalidChunkError('index must be lower than totalChunks');
     }
 
-    return new Chunk(input.videoId, input.index, input.status);
+    if (
+      input.frameCount !== null &&
+      (!Number.isInteger(input.frameCount) || input.frameCount < 0)
+    ) {
+      throw new InvalidChunkError('frameCount must be a non-negative integer or null');
+    }
+
+    return new Chunk(input.videoId, input.index, input.status, input.frameCount);
   }
 
   public markAsProcessing(): void {
@@ -68,8 +81,13 @@ export class Chunk {
     this.transitionTo(ChunkStatus.PROCESSING);
   }
 
-  public markAsCompleted(): void {
+  public markAsCompleted(frameCount: number): void {
+    if (!Number.isInteger(frameCount) || frameCount < 0) {
+      throw new InvalidChunkError('frameCount must be a non-negative integer');
+    }
+
     this.transitionTo(ChunkStatus.COMPLETED);
+    this._frameCount = frameCount;
   }
 
   public markAsFailed(): void {
@@ -90,6 +108,10 @@ export class Chunk {
 
   public get status(): ChunkStatus {
     return this._status;
+  }
+
+  public get frameCount(): number | null {
+    return this._frameCount;
   }
 
   private transitionTo(next: ChunkStatus): void {
