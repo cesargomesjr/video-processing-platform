@@ -5,6 +5,9 @@ import { AnalyzeVideoUseCase } from '../../../src/contexts/video-processing/appl
 import { PackageArchiveUseCase } from '../../../src/contexts/video-processing/application/package-archive.use-case';
 import { PlanChunksUseCase } from '../../../src/contexts/video-processing/application/plan-chunks.use-case';
 import { ProcessChunkUseCase } from '../../../src/contexts/video-processing/application/process-chunk.use-case';
+import { NotifyProcessingFailureUseCase } from '../../../src/contexts/notification/application/notify-processing-failure.use-case';
+import { PostgresUserEmailResolver } from '../../../src/contexts/notification/infrastructure/postgres-user-email-resolver';
+import { SmtpNotificationGateway } from '../../../src/contexts/notification/infrastructure/smtp-notification-gateway';
 import { ChunkCompletionPolicy } from '../../../src/contexts/video-processing/domain/chunk-completion-policy';
 import { FFmpegFrameExtractor } from '../../../src/contexts/video-processing/infrastructure/ffmpeg-frame-extractor';
 import { FFprobeAnalyzer } from '../../../src/contexts/video-processing/infrastructure/ffprobe-analyzer';
@@ -72,6 +75,14 @@ async function main(): Promise<void> {
       new ZipArchiveBuilder(),
       videoStorage,
       publisher,
+    ),
+    notifyFailure: new NotifyProcessingFailureUseCase(
+      new SmtpNotificationGateway({
+        host: config.smtp.host,
+        port: config.smtp.port,
+        from: 'no-reply.com',
+      }),
+      new PostgresUserEmailResolver(dataSource),
     ),
   });
 

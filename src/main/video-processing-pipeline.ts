@@ -2,6 +2,7 @@ import { ConsumeMessage } from 'amqplib';
 
 import { AggregateChunksUseCase } from '../contexts/video-processing/application/aggregate-chunks.use-case';
 import { AnalyzeVideoUseCase } from '../contexts/video-processing/application/analyze-video.use-case';
+import { NotifyProcessingFailureUseCase } from '../contexts/notification/application/notify-processing-failure.use-case';
 import { PackageArchiveUseCase } from '../contexts/video-processing/application/package-archive.use-case';
 import { PlanChunksUseCase } from '../contexts/video-processing/application/plan-chunks.use-case';
 import {
@@ -19,6 +20,7 @@ interface VideoProcessingPipelineOptions {
   processChunk: ProcessChunkUseCase;
   aggregate: AggregateChunksUseCase;
   packageArchive: PackageArchiveUseCase;
+  notifyFailure?: NotifyProcessingFailureUseCase;
 }
 
 export class VideoProcessingPipeline {
@@ -62,6 +64,20 @@ export class VideoProcessingPipeline {
       consumer('video.chunks.all.packager', 'video.chunks.all', async (message) => {
         const payload = JSON.parse(message.content.toString()) as { videoId: string };
         await this.options.packageArchive.execute({ videoId: payload.videoId });
+      }),
+      consumer('video.failed.notification', 'video.failed', async (message) => {
+        const payload = JSON.parse(message.content.toString()) as {
+          videoId: string;
+          ownerId: string;
+          reason: string;
+        };
+        if (this.options.notifyFailure !== undefined) {
+          await this.options.notifyFailure.execute({
+            videoId: payload.videoId,
+            ownerId: payload.ownerId,
+            reason: payload.reason,
+          });
+        }
       }),
     );
 
