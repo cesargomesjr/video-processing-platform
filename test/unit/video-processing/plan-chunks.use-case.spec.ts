@@ -7,6 +7,7 @@ import {
   ChunkCompletedEvent,
   ProcessVideoChunkEvent,
   VideoAnalyzedEvent,
+  VideoCompletedEvent,
 } from '../../../src/contexts/video-processing/application/ports/message-publisher';
 import { Chunk } from '../../../src/contexts/video-processing/domain/chunk';
 import { Video } from '../../../src/contexts/video-management/domain/video';
@@ -83,6 +84,7 @@ class FakeMessagePublisher implements MessagePublisher {
   public readonly analyzed: VideoAnalyzedEvent[] = [];
   public readonly completed: ChunkCompletedEvent[] = [];
   public readonly all: AllChunksCompletedEvent[] = [];
+  public readonly videoCompleted: VideoCompletedEvent[] = [];
 
   public publishProcessVideoChunk(event: ProcessVideoChunkEvent): Promise<void> {
     this.processed.push(event);
@@ -101,6 +103,11 @@ class FakeMessagePublisher implements MessagePublisher {
 
   public publishAllChunksCompleted(event: AllChunksCompletedEvent): Promise<void> {
     this.all.push(event);
+    return Promise.resolve();
+  }
+
+  public publishVideoCompleted(event: VideoCompletedEvent): Promise<void> {
+    this.videoCompleted.push(event);
     return Promise.resolve();
   }
 }

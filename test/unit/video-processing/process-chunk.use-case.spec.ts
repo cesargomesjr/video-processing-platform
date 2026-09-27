@@ -12,6 +12,7 @@ import {
   MessagePublisher,
   ProcessVideoChunkEvent,
   VideoAnalyzedEvent,
+  VideoCompletedEvent,
 } from '../../../src/contexts/video-processing/application/ports/message-publisher';
 import { Chunk } from '../../../src/contexts/video-processing/domain/chunk';
 import { ChunkStatus } from '../../../src/contexts/video-processing/domain/chunk-status';
@@ -97,11 +98,20 @@ class FakeFrameStorage implements FrameStorage {
     this.stored.set(key, content);
     return Promise.resolve();
   }
+
+  public get(key: string): Promise<Buffer> {
+    return Promise.resolve(this.stored.get(key) ?? Buffer.alloc(0));
+  }
+
+  public list(prefix: string): Promise<string[]> {
+    return Promise.resolve([...this.stored.keys()].filter((key) => key.startsWith(prefix)).sort());
+  }
 }
 
 class FakeMessagePublisher implements MessagePublisher {
   public readonly completed: ChunkCompletedEvent[] = [];
   public readonly all: AllChunksCompletedEvent[] = [];
+  public readonly videoCompleted: VideoCompletedEvent[] = [];
   public readonly processed: ProcessVideoChunkEvent[] = [];
   public readonly analyzed: VideoAnalyzedEvent[] = [];
 
@@ -112,6 +122,11 @@ class FakeMessagePublisher implements MessagePublisher {
 
   public publishAllChunksCompleted(event: AllChunksCompletedEvent): Promise<void> {
     this.all.push(event);
+    return Promise.resolve();
+  }
+
+  public publishVideoCompleted(event: VideoCompletedEvent): Promise<void> {
+    this.videoCompleted.push(event);
     return Promise.resolve();
   }
 

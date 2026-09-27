@@ -26,9 +26,16 @@ export interface AllChunksCompletedEvent {
   totalFrames: number;
 }
 
+export interface VideoCompletedEvent {
+  videoId: string;
+  zipKey: string;
+  frameCount: number;
+}
+
 export interface MessagePublisher {
   publishVideoAnalyzed(event: VideoAnalyzedEvent): Promise<void>;
   publishProcessVideoChunk(event: ProcessVideoChunkEvent): Promise<void>;
   publishChunkCompleted(event: ChunkCompletedEvent): Promise<void>;
   publishAllChunksCompleted(event: AllChunksCompletedEvent): Promise<void>;
+  publishVideoCompleted(event: VideoCompletedEvent): Promise<void>;
 }
