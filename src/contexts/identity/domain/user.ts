@@ -16,6 +16,10 @@ export class User {
   ) {}
 
   public static register(id: string, email: Email, passwordHash: PasswordHash): User {
+    return User.reconstitute(id, email, passwordHash);
+  }
+
+  public static reconstitute(id: string, email: Email, passwordHash: PasswordHash): User {
     if (id.trim().length === 0) {
       throw new InvalidUserIdError();
     }

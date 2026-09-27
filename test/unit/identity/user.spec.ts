@@ -14,9 +14,21 @@ describe('User', () => {
     expect(user.passwordHash.equals(passwordHash)).toBe(true);
   });
 
+  it('reconstitutes a persisted user with the same invariants', () => {
+    const user = User.reconstitute('user-1', email, passwordHash);
+
+    expect(user.id).toBe('user-1');
+    expect(user.email.equals(email)).toBe(true);
+    expect(user.passwordHash.equals(passwordHash)).toBe(true);
+  });
+
   it('rejects an empty id', () => {
     expect(() => User.register('', email, passwordHash)).toThrow(InvalidUserIdError);
     expect(() => User.register('   ', email, passwordHash)).toThrow(InvalidUserIdError);
+  });
+
+  it('reconstitute rejects an empty id', () => {
+    expect(() => User.reconstitute('', email, passwordHash)).toThrow(InvalidUserIdError);
   });
 
   it('compares by id', () => {
