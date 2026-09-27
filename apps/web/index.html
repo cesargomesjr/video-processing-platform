@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>FIAP X — Vídeos</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="container">
+      <h1>FIAP X — Plataforma de vídeos</h1>
+
+      <section id="auth-section" class="card">
+        <h2>Acesso</h2>
+        <form id="auth-form">
+          <label>
+            E-mail
+            <input id="email" name="email" type="email" autocomplete="email" required />
+          </label>
+          <label>
+            Senha
+            <input
+              id="password"
+              name="password"
+              type="password"
+              autocomplete="current-password"
+              required
+            />
+          </label>
+          <div class="actions">
+            <button type="submit">Entrar / Cadastrar</button>
+          </div>
+        </form>
+      </section>
+
+      <section id="videos-section" class="card hidden">
+        <h2>Meus vídeos</h2>
+
+        <form id="upload-form">
+          <label>
+            Vídeo
+            <input id="file" name="file" type="file" accept=".mp4,.avi,.mov,.mkv,.wmv,.flv,.webm" required />
+          </label>
+          <div class="actions">
+            <button type="submit">Enviar</button>
+            <button id="refresh" type="button">Atualizar lista</button>
+          </div>
+        </form>
+
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Status</th>
+              <th>Ação</th>
+            </tr>
+          </thead>
+          <tbody id="videos-body"></tbody>
+        </table>
+      </section>
+
+      <p id="message" class="message" role="status"></p>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>

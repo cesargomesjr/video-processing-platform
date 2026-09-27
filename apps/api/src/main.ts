@@ -11,6 +11,7 @@ async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule, { logger });
 
   app.use(createCorrelationMiddleware({ logger }));
+  app.enableCors();
 
   await app.listen(config.port);
 }
