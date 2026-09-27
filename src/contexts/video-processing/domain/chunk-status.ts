@@ -6,7 +6,7 @@ export type ChunkStatusValue = (typeof CHUNK_STATUS_VALUES)[number];
 
 const TRANSITIONS: Readonly<Record<ChunkStatusValue, readonly ChunkStatusValue[]>> = {
   PENDING: ['PROCESSING'],
-  PROCESSING: ['COMPLETED', 'FAILED'],
+  PROCESSING: ['COMPLETED', 'FAILED', 'PENDING'],
   COMPLETED: [],
   FAILED: ['PENDING'],
 };

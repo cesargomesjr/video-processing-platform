@@ -9,6 +9,7 @@ describe('ChunkStatus', () => {
     ['PENDING', 'COMPLETED', false],
     ['PROCESSING', 'COMPLETED', true],
     ['PROCESSING', 'FAILED', true],
+    ['PROCESSING', 'PENDING', true],
     ['FAILED', 'PENDING', true],
     ['FAILED', 'PROCESSING', false],
     ['COMPLETED', 'PENDING', false],

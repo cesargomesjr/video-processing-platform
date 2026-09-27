@@ -1,4 +1,5 @@
 import { DomainError } from './domain-error';
+import { ChunkLease } from './chunk-lease';
 import { ChunkStatus } from './chunk-status';
 
 export class InvalidChunkError extends DomainError {
@@ -28,6 +29,7 @@ interface ChunkCreateInput {
 interface ChunkReconstituteInput extends ChunkCreateInput {
   status: ChunkStatus;
   frameCount: number | null;
+  lease?: ChunkLease | null;
 }
 
 export class Chunk {
@@ -36,6 +38,7 @@ export class Chunk {
     private readonly _index: number,
     private _status: ChunkStatus,
     private _frameCount: number | null,
+    private _lease: ChunkLease | null,
   ) {}
 
   public static create(input: ChunkCreateInput): Chunk {
@@ -43,6 +46,7 @@ export class Chunk {
       ...input,
       status: ChunkStatus.PENDING,
       frameCount: null,
+      lease: null,
     });
   }
 
@@ -70,7 +74,13 @@ export class Chunk {
       throw new InvalidChunkError('frameCount must be a non-negative integer or null');
     }
 
-    return new Chunk(input.videoId, input.index, input.status, input.frameCount);
+    return new Chunk(
+      input.videoId,
+      input.index,
+      input.status,
+      input.frameCount,
+      input.lease ?? null,
+    );
   }
 
   public markAsProcessing(): void {
@@ -81,6 +91,15 @@ export class Chunk {
     this.transitionTo(ChunkStatus.PROCESSING);
   }
 
+  public claim(workerId: string, lockedUntil: Date): void {
+    if (this._status === ChunkStatus.COMPLETED) {
+      throw new ChunkAlreadyCompletedError();
+    }
+
+    this.transitionTo(ChunkStatus.PROCESSING);
+    this._lease = ChunkLease.create(workerId, lockedUntil);
+  }
+
   public markAsCompleted(frameCount: number): void {
     if (!Number.isInteger(frameCount) || frameCount < 0) {
       throw new InvalidChunkError('frameCount must be a non-negative integer');
@@ -88,14 +107,34 @@ export class Chunk {
 
     this.transitionTo(ChunkStatus.COMPLETED);
     this._frameCount = frameCount;
+    this._lease = null;
   }
 
   public markAsFailed(): void {
     this.transitionTo(ChunkStatus.FAILED);
+    this._lease = null;
   }
 
   public retry(): void {
     this.transitionTo(ChunkStatus.PENDING);
+    this._lease = null;
+  }
+
+  public release(): void {
+    this.transitionTo(ChunkStatus.PENDING);
+    this._lease = null;
+  }
+
+  public isLeaseExpired(now: Date): boolean {
+    return this._lease !== null && this._lease.isExpired(now);
+  }
+
+  public renewLease(lockedUntil: Date): void {
+    if (this._lease === null) {
+      throw new InvalidChunkError('chunk has no lease to renew');
+    }
+
+    this._lease = this._lease.renew(lockedUntil);
   }
 
   public get videoId(): string {
@@ -112,6 +151,10 @@ export class Chunk {
 
   public get frameCount(): number | null {
     return this._frameCount;
+  }
+
+  public get lease(): ChunkLease | null {
+    return this._lease;
   }
 
   private transitionTo(next: ChunkStatus): void {
