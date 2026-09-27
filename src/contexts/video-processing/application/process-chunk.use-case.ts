@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { VideoStorage } from '../../video-management/application/ports/video-storage';
+import { MetricsService } from '../../../platform/metrics/metrics.service';
 import { ChunkStatus } from '../domain/chunk-status';
 import { ExtractFramesSpec } from '../domain/extract-frames-spec';
 import { VideoProcessingError } from './errors';
@@ -26,6 +27,7 @@ export class ProcessChunkUseCase {
     private readonly frameExtractor: FrameExtractor,
     private readonly frameStorage: FrameStorage,
     private readonly messagePublisher: MessagePublisher,
+    private readonly metrics: MetricsService = new MetricsService(),
   ) {}
 
   public async execute(input: ProcessChunkInput): Promise<void> {
@@ -60,6 +62,7 @@ export class ProcessChunkUseCase {
       );
     } catch {
       await this.chunkRepository.markFailed(input.videoId, input.chunkIndex);
+      this.metrics.incrementChunks('FAILED');
       return;
     }
 
@@ -70,11 +73,13 @@ export class ProcessChunkUseCase {
       }
     } catch {
       await this.chunkRepository.markFailed(input.videoId, input.chunkIndex);
+      this.metrics.incrementChunks('FAILED');
       return;
     }
 
     const frameCount = frames.length;
     await this.chunkRepository.markCompleted(input.videoId, input.chunkIndex, frameCount);
+    this.metrics.incrementChunks('COMPLETED');
 
     await this.messagePublisher.publishChunkCompleted({
       videoId: input.videoId,
