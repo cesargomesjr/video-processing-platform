@@ -7,8 +7,8 @@ import {
 } from '@nestjs/common';
 import { JwtPayload, verify } from 'jsonwebtoken';
 
-import { AppConfig } from '../../../platform/config/app-config.schema';
-import { APP_CONFIG } from '../../../platform/config/app-config.token';
+import { AppConfig } from '../config/app-config.schema';
+import { APP_CONFIG } from '../config/app-config.token';
 
 interface AuthenticatedRequest {
   headers: { authorization?: string };

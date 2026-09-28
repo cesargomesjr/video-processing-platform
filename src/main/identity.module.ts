@@ -8,7 +8,7 @@ import { JwtTokenIssuer } from '../contexts/identity/infrastructure/jwt-token-is
 import { PostgresUserRepository } from '../contexts/identity/infrastructure/typeorm/postgres-user.repository';
 import { UuidIdGenerator } from '../contexts/identity/infrastructure/uuid-id-generator';
 import { AuthController } from '../contexts/identity/presentation/auth.controller';
-import { JwtGuard } from '../contexts/identity/presentation/jwt.guard';
+import { JwtGuard } from '../platform/security/jwt.guard';
 import { AppConfig } from '../platform/config/app-config.schema';
 import { APP_CONFIG } from '../platform/config/app-config.token';
 import { ConfigModule } from './config.module';

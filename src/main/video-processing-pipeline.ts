@@ -2,6 +2,7 @@ import { ConsumeMessage } from 'amqplib';
 
 import { AggregateChunksUseCase } from '../contexts/video-processing/application/aggregate-chunks.use-case';
 import { AnalyzeVideoUseCase } from '../contexts/video-processing/application/analyze-video.use-case';
+import { NotifyProcessingCompletionUseCase } from '../contexts/notification/application/notify-processing-completion.use-case';
 import { NotifyProcessingFailureUseCase } from '../contexts/notification/application/notify-processing-failure.use-case';
 import { PackageArchiveUseCase } from '../contexts/video-processing/application/package-archive.use-case';
 import { PlanChunksUseCase } from '../contexts/video-processing/application/plan-chunks.use-case';
@@ -21,6 +22,7 @@ interface VideoProcessingPipelineOptions {
   aggregate: AggregateChunksUseCase;
   packageArchive: PackageArchiveUseCase;
   notifyFailure?: NotifyProcessingFailureUseCase;
+  notifyCompletion?: NotifyProcessingCompletionUseCase;
 }
 
 export class VideoProcessingPipeline {
@@ -61,9 +63,22 @@ export class VideoProcessingPipeline {
         const payload = JSON.parse(message.content.toString()) as { videoId: string };
         await this.options.aggregate.execute({ videoId: payload.videoId });
       }),
+      consumer('video.chunk.failed.aggregator', 'video.chunk.failed', async (message) => {
+        const payload = JSON.parse(message.content.toString()) as { videoId: string };
+        await this.options.aggregate.execute({ videoId: payload.videoId });
+      }),
       consumer('video.chunks.all.packager', 'video.chunks.all', async (message) => {
         const payload = JSON.parse(message.content.toString()) as { videoId: string };
         await this.options.packageArchive.execute({ videoId: payload.videoId });
+      }),
+      consumer('video.completed.notification', 'video.completed', async (message) => {
+        const payload = JSON.parse(message.content.toString()) as {
+          videoId: string;
+          ownerId: string;
+        };
+        if (this.options.notifyCompletion !== undefined) {
+          await this.options.notifyCompletion.execute(payload);
+        }
       }),
       consumer('video.failed.notification', 'video.failed', async (message) => {
         const payload = JSON.parse(message.content.toString()) as {

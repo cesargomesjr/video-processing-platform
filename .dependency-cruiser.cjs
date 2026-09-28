@@ -34,6 +34,38 @@ module.exports = {
       from: { path: '^src/contexts/[^/]+/presentation/' },
       to: { path: '^src/contexts/[^/]+/infrastructure/' },
     },
+    {
+      name: 'identity-context-must-not-depend-on-other-contexts',
+      comment:
+        'Contextos se integram por portas/eventos e pelo composition root, não por imports diretos.',
+      severity: 'error',
+      from: { path: '^src/contexts/identity/' },
+      to: { path: '^src/contexts/(notification|video-management|video-processing)/' },
+    },
+    {
+      name: 'notification-context-must-not-depend-on-other-contexts',
+      comment:
+        'Contextos se integram por portas/eventos e pelo composition root, não por imports diretos.',
+      severity: 'error',
+      from: { path: '^src/contexts/notification/' },
+      to: { path: '^src/contexts/(identity|video-management|video-processing)/' },
+    },
+    {
+      name: 'video-management-context-must-not-depend-on-other-contexts',
+      comment:
+        'Contextos se integram por portas/eventos e pelo composition root, não por imports diretos.',
+      severity: 'error',
+      from: { path: '^src/contexts/video-management/' },
+      to: { path: '^src/contexts/(identity|notification|video-processing)/' },
+    },
+    {
+      name: 'video-processing-context-must-not-depend-on-other-contexts',
+      comment:
+        'Contextos se integram por portas/eventos e pelo composition root, não por imports diretos.',
+      severity: 'error',
+      from: { path: '^src/contexts/video-processing/' },
+      to: { path: '^src/contexts/(identity|notification|video-management)/' },
+    },
   ],
   options: {
     doNotFollow: {

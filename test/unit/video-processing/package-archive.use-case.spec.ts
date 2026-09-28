@@ -5,6 +5,7 @@ import { FrameStorage } from '../../../src/contexts/video-processing/application
 import {
   AllChunksCompletedEvent,
   ChunkCompletedEvent,
+  ChunkFailedEvent,
   MessagePublisher,
   ProcessVideoChunkEvent,
   VideoAnalyzedEvent,
@@ -58,6 +59,7 @@ class FakeMessagePublisher implements MessagePublisher {
   public readonly analyzed: VideoAnalyzedEvent[] = [];
   public readonly processed: ProcessVideoChunkEvent[] = [];
   public readonly completed: ChunkCompletedEvent[] = [];
+  public readonly chunkFailed: ChunkFailedEvent[] = [];
   public readonly all: AllChunksCompletedEvent[] = [];
   public readonly videoCompleted: VideoCompletedEvent[] = [];
   public readonly failed: VideoProcessingFailedEvent[] = [];
@@ -74,6 +76,11 @@ class FakeMessagePublisher implements MessagePublisher {
 
   public publishChunkCompleted(event: ChunkCompletedEvent): Promise<void> {
     this.completed.push(event);
+    return Promise.resolve();
+  }
+
+  public publishChunkFailed(event: ChunkFailedEvent): Promise<void> {
+    this.chunkFailed.push(event);
     return Promise.resolve();
   }
 
@@ -144,7 +151,7 @@ describe('PackageArchiveUseCase', () => {
     expect(video?.zipKey).toBe('archives/video-1.zip');
     expect(videoStorage.stored.get('archives/video-1.zip')).toEqual(Buffer.from('zip'));
     expect(publisher.videoCompleted).toEqual([
-      { videoId: 'video-1', zipKey: 'archives/video-1.zip', frameCount: 2 },
+      { videoId: 'video-1', ownerId: 'user-1', zipKey: 'archives/video-1.zip', frameCount: 2 },
     ]);
   });
 
@@ -159,6 +166,14 @@ describe('PackageArchiveUseCase', () => {
     expect(video?.status).toBe(VideoStatus.FAILED);
     expect(video?.zipKey).toBeNull();
     expect(publisher.videoCompleted).toHaveLength(0);
+    expect(publisher.failed).toMatchObject([
+      {
+        videoId: 'video-1',
+        ownerId: 'user-1',
+        reason: 'Archive packaging failed',
+      },
+    ]);
+    expect(publisher.failed[0]?.failedAt).toBeInstanceOf(Date);
   });
 
   it('does nothing for an already completed video', async () => {

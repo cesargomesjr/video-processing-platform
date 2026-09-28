@@ -24,6 +24,7 @@ import { ProcessChunkUseCase } from '../../../src/contexts/video-processing/appl
 import {
   AllChunksCompletedEvent,
   ChunkCompletedEvent,
+  ChunkFailedEvent,
   MessagePublisher,
   ProcessVideoChunkEvent,
   VideoAnalyzedEvent,
@@ -45,6 +46,7 @@ import { VideoSize } from '../../../src/contexts/video-management/domain/video-s
 import { VideoStatus } from '../../../src/contexts/video-management/domain/video-status';
 import { S3VideoStorage } from '../../../src/contexts/video-management/infrastructure/s3-video-storage';
 import { PostgresVideoRepository } from '../../../src/contexts/video-management/infrastructure/typeorm/postgres-video.repository';
+import { TypeormProcessingVideoRepository } from '../../../src/main/typeorm-processing-video.repository';
 import { VideoEntity } from '../../../src/contexts/video-management/infrastructure/typeorm/video.entity';
 
 const execFileAsync = promisify(execFile);
@@ -62,6 +64,11 @@ class NoopMessagePublisher implements MessagePublisher {
   }
 
   public publishChunkCompleted(event: ChunkCompletedEvent): Promise<void> {
+    void event;
+    return Promise.resolve();
+  }
+
+  public publishChunkFailed(event: ChunkFailedEvent): Promise<void> {
     void event;
     return Promise.resolve();
   }
@@ -193,6 +200,7 @@ describe('concurrent video processing (integration)', () => {
     };
 
     const videoRepository = new PostgresVideoRepository(dataSource);
+    const processingVideoRepository = new TypeormProcessingVideoRepository(dataSource);
     const chunkRepository = new PostgresChunkRepository(dataSource);
     const publisher = new NoopMessagePublisher();
     const videoStorage = new S3VideoStorage(s3Options);
@@ -214,7 +222,7 @@ describe('concurrent video processing (integration)', () => {
     await Promise.all(
       VIDEO_IDS.map(async (videoId) => {
         const analyze = new AnalyzeVideoUseCase(
-          videoRepository,
+          processingVideoRepository,
           videoStorage,
           new FFprobeAnalyzer(ffprobeInstaller.path),
           publisher,
@@ -222,7 +230,7 @@ describe('concurrent video processing (integration)', () => {
         await analyze.execute({ videoId });
 
         const planChunks = new PlanChunksUseCase(
-          videoRepository,
+          processingVideoRepository,
           chunkRepository,
           publisher,
           2,
@@ -253,7 +261,7 @@ describe('concurrent video processing (integration)', () => {
         );
 
         const aggregate = new AggregateChunksUseCase(
-          videoRepository,
+          processingVideoRepository,
           chunkRepository,
           new ChunkCompletionPolicy(),
           publisher,
@@ -261,7 +269,7 @@ describe('concurrent video processing (integration)', () => {
         await aggregate.execute({ videoId });
 
         const packageArchive = new PackageArchiveUseCase(
-          videoRepository,
+          processingVideoRepository,
           frameStorage,
           new ZipArchiveBuilder(),
           videoStorage,

@@ -6,6 +6,7 @@ import {
   VideoAnalyzedEvent,
   AllChunksCompletedEvent,
   ChunkCompletedEvent,
+  ChunkFailedEvent,
   ProcessVideoChunkEvent,
   VideoCompletedEvent,
   VideoProcessingFailedEvent,
@@ -29,6 +30,10 @@ export class RabbitMqMessagePublisher implements MessagePublisher {
 
   public async publishChunkCompleted(event: ChunkCompletedEvent): Promise<void> {
     await this.publish('video.chunk.completed', event);
+  }
+
+  public async publishChunkFailed(event: ChunkFailedEvent): Promise<void> {
+    await this.publish('video.chunk.failed', event);
   }
 
   public async publishAllChunksCompleted(event: AllChunksCompletedEvent): Promise<void> {

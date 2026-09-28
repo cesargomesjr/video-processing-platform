@@ -9,6 +9,7 @@ import { FrameStorage } from '../../../src/contexts/video-processing/application
 import {
   AllChunksCompletedEvent,
   ChunkCompletedEvent,
+  ChunkFailedEvent,
   MessagePublisher,
   ProcessVideoChunkEvent,
   VideoAnalyzedEvent,
@@ -112,6 +113,7 @@ class FakeFrameStorage implements FrameStorage {
 
 class FakeMessagePublisher implements MessagePublisher {
   public readonly completed: ChunkCompletedEvent[] = [];
+  public readonly chunkFailed: ChunkFailedEvent[] = [];
   public readonly all: AllChunksCompletedEvent[] = [];
   public readonly videoCompleted: VideoCompletedEvent[] = [];
   public readonly failed: VideoProcessingFailedEvent[] = [];
@@ -120,6 +122,11 @@ class FakeMessagePublisher implements MessagePublisher {
 
   public publishChunkCompleted(event: ChunkCompletedEvent): Promise<void> {
     this.completed.push(event);
+    return Promise.resolve();
+  }
+
+  public publishChunkFailed(event: ChunkFailedEvent): Promise<void> {
+    this.chunkFailed.push(event);
     return Promise.resolve();
   }
 
@@ -232,6 +239,7 @@ describe('ProcessChunkUseCase', () => {
     const chunk = await repository.findByVideoAndIndex('video-1', 0);
     expect(chunk?.status).toBe(ChunkStatus.FAILED);
     expect(publisher.completed).toHaveLength(0);
+    expect(publisher.chunkFailed).toEqual([{ videoId: 'video-1', chunkIndex: 0 }]);
   });
 
   it('throws when the chunk does not exist', async () => {

@@ -5,6 +5,7 @@ import {
   MessagePublisher,
   AllChunksCompletedEvent,
   ChunkCompletedEvent,
+  ChunkFailedEvent,
   ProcessVideoChunkEvent,
   VideoAnalyzedEvent,
   VideoCompletedEvent,
@@ -84,6 +85,7 @@ class FakeMessagePublisher implements MessagePublisher {
   public readonly processed: ProcessVideoChunkEvent[] = [];
   public readonly analyzed: VideoAnalyzedEvent[] = [];
   public readonly completed: ChunkCompletedEvent[] = [];
+  public readonly chunkFailed: ChunkFailedEvent[] = [];
   public readonly all: AllChunksCompletedEvent[] = [];
   public readonly videoCompleted: VideoCompletedEvent[] = [];
   public readonly failed: VideoProcessingFailedEvent[] = [];
@@ -100,6 +102,11 @@ class FakeMessagePublisher implements MessagePublisher {
 
   public publishChunkCompleted(event: ChunkCompletedEvent): Promise<void> {
     this.completed.push(event);
+    return Promise.resolve();
+  }
+
+  public publishChunkFailed(event: ChunkFailedEvent): Promise<void> {
+    this.chunkFailed.push(event);
     return Promise.resolve();
   }
 

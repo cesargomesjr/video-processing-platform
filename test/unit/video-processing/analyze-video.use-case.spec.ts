@@ -8,6 +8,7 @@ import {
   MessagePublisher,
   AllChunksCompletedEvent,
   ChunkCompletedEvent,
+  ChunkFailedEvent,
   ProcessVideoChunkEvent,
   VideoAnalyzedEvent,
   VideoCompletedEvent,
@@ -57,6 +58,7 @@ class FakeMessagePublisher implements MessagePublisher {
   public readonly published: VideoAnalyzedEvent[] = [];
   public readonly processed: ProcessVideoChunkEvent[] = [];
   public readonly completed: ChunkCompletedEvent[] = [];
+  public readonly chunkFailed: ChunkFailedEvent[] = [];
   public readonly all: AllChunksCompletedEvent[] = [];
   public readonly videoCompleted: VideoCompletedEvent[] = [];
   public readonly failed: VideoProcessingFailedEvent[] = [];
@@ -73,6 +75,11 @@ class FakeMessagePublisher implements MessagePublisher {
 
   public publishChunkCompleted(event: ChunkCompletedEvent): Promise<void> {
     this.completed.push(event);
+    return Promise.resolve();
+  }
+
+  public publishChunkFailed(event: ChunkFailedEvent): Promise<void> {
+    this.chunkFailed.push(event);
     return Promise.resolve();
   }
 
@@ -133,6 +140,14 @@ describe('AnalyzeVideoUseCase', () => {
     const saved = await repository.findById(VideoId.create('video-1'));
     expect(saved?.status).toBe(VideoStatus.FAILED);
     expect(publisher.published).toHaveLength(0);
+    expect(publisher.failed).toMatchObject([
+      {
+        videoId: 'video-1',
+        ownerId: 'user-1',
+        reason: 'Invalid video duration',
+      },
+    ]);
+    expect(publisher.failed[0]?.failedAt).toBeInstanceOf(Date);
   });
 
   it('marks the video as FAILED when analysis throws', async () => {
@@ -144,6 +159,17 @@ describe('AnalyzeVideoUseCase', () => {
     const saved = await repository.findById(VideoId.create('video-1'));
     expect(saved?.status).toBe(VideoStatus.FAILED);
     expect(publisher.published).toHaveLength(0);
+    expect(publisher.failed).toMatchObject([
+      {
+        videoId: 'video-1',
+        ownerId: 'user-1',
+        reason: 'Video analysis failed',
+      },
+    ]);
+    expect(publisher.failed[0]?.failedAt).toBeInstanceOf(Date);
+
+    await useCase.execute({ videoId: 'video-1' });
+    expect(publisher.failed).toHaveLength(1);
   });
 
   it('throws when the video does not exist', async () => {

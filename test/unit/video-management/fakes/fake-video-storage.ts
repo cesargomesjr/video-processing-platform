@@ -1,6 +1,7 @@
 import { VideoStorage } from '../../../../src/contexts/video-management/application/ports/video-storage';
+import { VideoFileStorage } from '../../../../src/contexts/video-processing/application/ports/video-file-storage';
 
-export class FakeVideoStorage implements VideoStorage {
+export class FakeVideoStorage implements VideoStorage, VideoFileStorage {
   public readonly stored = new Map<string, Buffer>();
   public shouldFail = false;
 

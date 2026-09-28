@@ -1,7 +1,7 @@
 import { DataSource } from 'typeorm';
 
-import { UserEntity } from '../../identity/infrastructure/typeorm/user.entity';
-import { UserEmailResolver } from '../application/ports/user-email-resolver';
+import { UserEmailResolver } from '../contexts/notification/application/ports/user-email-resolver';
+import { UserEntity } from '../contexts/identity/infrastructure/typeorm/user.entity';
 
 export class PostgresUserEmailResolver implements UserEmailResolver {
   public constructor(private readonly dataSource: DataSource) {}

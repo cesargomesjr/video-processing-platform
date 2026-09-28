@@ -42,6 +42,7 @@ export class RabbitMqConsumer {
     await this.channel.assertQueue(dlqQueue, { durable: true });
     await this.channel.bindQueue(dlqQueue, exchange, dlqRoutingKey);
 
+    await this.channel.prefetch(1);
     await this.channel.consume(queue, (message) => {
       void this.handle(message, exchange, retryRoutingKey, dlqRoutingKey);
     });

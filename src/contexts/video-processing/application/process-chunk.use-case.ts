@@ -2,8 +2,6 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { VideoStorage } from '../../video-management/application/ports/video-storage';
-import { MetricsService } from '../../../platform/metrics/metrics.service';
 import { ChunkStatus } from '../domain/chunk-status';
 import { ExtractFramesSpec } from '../domain/extract-frames-spec';
 import { VideoProcessingError } from './errors';
@@ -11,6 +9,8 @@ import { ChunkRepository } from './ports/chunk-repository';
 import { FrameExtractor } from './ports/frame-extractor';
 import { FrameStorage } from './ports/frame-storage';
 import { MessagePublisher } from './ports/message-publisher';
+import { NoopProcessingMetrics, ProcessingMetrics } from './ports/processing-metrics';
+import { VideoFileStorage } from './ports/video-file-storage';
 
 export interface ProcessChunkInput {
   videoId: string;
@@ -23,11 +23,11 @@ export interface ProcessChunkInput {
 export class ProcessChunkUseCase {
   public constructor(
     private readonly chunkRepository: ChunkRepository,
-    private readonly videoStorage: VideoStorage,
+    private readonly videoStorage: VideoFileStorage,
     private readonly frameExtractor: FrameExtractor,
     private readonly frameStorage: FrameStorage,
     private readonly messagePublisher: MessagePublisher,
-    private readonly metrics: MetricsService = new MetricsService(),
+    private readonly metrics: ProcessingMetrics = new NoopProcessingMetrics(),
   ) {}
 
   public async execute(input: ProcessChunkInput): Promise<void> {
@@ -63,6 +63,10 @@ export class ProcessChunkUseCase {
     } catch {
       await this.chunkRepository.markFailed(input.videoId, input.chunkIndex);
       this.metrics.incrementChunks('FAILED');
+      await this.messagePublisher.publishChunkFailed({
+        videoId: input.videoId,
+        chunkIndex: input.chunkIndex,
+      });
       return;
     }
 
@@ -74,6 +78,10 @@ export class ProcessChunkUseCase {
     } catch {
       await this.chunkRepository.markFailed(input.videoId, input.chunkIndex);
       this.metrics.incrementChunks('FAILED');
+      await this.messagePublisher.publishChunkFailed({
+        videoId: input.videoId,
+        chunkIndex: input.chunkIndex,
+      });
       return;
     }
 

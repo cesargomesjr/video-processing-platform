@@ -2,12 +2,10 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { VideoRepository } from '../../video-management/application/ports/video-repository';
-import { VideoStorage } from '../../video-management/application/ports/video-storage';
-import { VideoId } from '../../video-management/domain/video-id';
-import { VideoStatus } from '../../video-management/domain/video-status';
 import { VideoProcessingError } from './errors';
 import { MessagePublisher } from './ports/message-publisher';
+import { ProcessingVideo, ProcessingVideoRepository } from './ports/processing-video-repository';
+import { VideoFileStorage } from './ports/video-file-storage';
 import { VideoAnalysis, VideoAnalyzer } from './ports/video-analyzer';
 
 export interface AnalyzeVideoInput {
@@ -16,21 +14,20 @@ export interface AnalyzeVideoInput {
 
 export class AnalyzeVideoUseCase {
   public constructor(
-    private readonly videoRepository: VideoRepository,
-    private readonly videoStorage: VideoStorage,
+    private readonly videoRepository: ProcessingVideoRepository,
+    private readonly videoStorage: VideoFileStorage,
     private readonly videoAnalyzer: VideoAnalyzer,
     private readonly messagePublisher: MessagePublisher,
   ) {}
 
   public async execute(input: AnalyzeVideoInput): Promise<void> {
-    const id = VideoId.create(input.videoId);
-    const video = await this.videoRepository.findById(id);
+    const video = await this.videoRepository.findById(input.videoId);
 
     if (video === null) {
       throw new VideoProcessingError(`Video not found: ${input.videoId}`);
     }
 
-    if (video.status !== VideoStatus.PENDING) {
+    if (video.status !== 'PENDING') {
       return;
     }
 
@@ -40,29 +37,40 @@ export class AnalyzeVideoUseCase {
         this.videoAnalyzer.analyze(filePath),
       );
     } catch {
-      video.transitionTo(VideoStatus.FAILED);
-      await this.videoRepository.saveTransition(video, VideoStatus.PENDING);
+      await this.markFailed(video, 'Video analysis failed');
       return;
     }
 
     if (!Number.isSafeInteger(analysis.durationMs) || analysis.durationMs <= 0) {
-      video.transitionTo(VideoStatus.FAILED);
-      await this.videoRepository.saveTransition(video, VideoStatus.PENDING);
+      await this.markFailed(video, 'Invalid video duration');
       return;
     }
 
-    video.markAnalyzed(analysis.durationMs);
-    const analyzed = await this.videoRepository.saveTransition(video, VideoStatus.PENDING);
+    const analyzed = await this.videoRepository.markAnalyzed(video.id, analysis.durationMs);
     if (!analyzed) {
       return;
     }
 
     await this.messagePublisher.publishVideoAnalyzed({
-      videoId: video.id.value,
+      videoId: video.id,
       durationMs: analysis.durationMs,
       width: analysis.width,
       height: analysis.height,
       codec: analysis.codec,
+    });
+  }
+
+  private async markFailed(video: ProcessingVideo, reason: string): Promise<void> {
+    const failed = await this.videoRepository.markFailed(video.id, 'PENDING');
+    if (!failed) {
+      return;
+    }
+
+    await this.messagePublisher.publishVideoProcessingFailed({
+      videoId: video.id,
+      ownerId: video.ownerId,
+      reason,
+      failedAt: new Date(),
     });
   }
 

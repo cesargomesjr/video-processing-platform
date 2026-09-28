@@ -32,7 +32,7 @@ import { ZipArchiveBuilder } from '../../../src/contexts/video-processing/infras
 import { PostgresChunkRepository } from '../../../src/contexts/video-processing/infrastructure/typeorm/postgres-chunk.repository';
 import { VideoProcessingPipeline } from '../../../src/main/video-processing-pipeline';
 import { S3VideoStorage } from '../../../src/contexts/video-management/infrastructure/s3-video-storage';
-import { PostgresVideoRepository } from '../../../src/contexts/video-management/infrastructure/typeorm/postgres-video.repository';
+import { TypeormProcessingVideoRepository } from '../../../src/main/typeorm-processing-video.repository';
 import { DATA_SOURCE } from '../../../src/main/tokens';
 
 const execFileAsync = promisify(execFile);
@@ -147,7 +147,7 @@ describe('Video processing full flow (e2e)', () => {
       bucket: BUCKET,
       region: 'us-east-1',
     };
-    const videoRepository = new PostgresVideoRepository(dataSource);
+    const processingVideoRepository = new TypeormProcessingVideoRepository(dataSource);
     const chunkRepository = new PostgresChunkRepository(dataSource);
     const publisher = new RabbitMqMessagePublisher(process.env.RABBITMQ_URL);
     const videoStorage = new S3VideoStorage(s3Options);
@@ -156,12 +156,18 @@ describe('Video processing full flow (e2e)', () => {
     pipeline = new VideoProcessingPipeline({
       url: process.env.RABBITMQ_URL,
       analyze: new AnalyzeVideoUseCase(
-        videoRepository,
+        processingVideoRepository,
         videoStorage,
         new FFprobeAnalyzer(ffprobeInstaller.path),
         publisher,
       ),
-      planChunks: new PlanChunksUseCase(videoRepository, chunkRepository, publisher, 2, 100),
+      planChunks: new PlanChunksUseCase(
+        processingVideoRepository,
+        chunkRepository,
+        publisher,
+        2,
+        100,
+      ),
       processChunk: new ProcessChunkUseCase(
         chunkRepository,
         videoStorage,
@@ -170,13 +176,13 @@ describe('Video processing full flow (e2e)', () => {
         publisher,
       ),
       aggregate: new AggregateChunksUseCase(
-        videoRepository,
+        processingVideoRepository,
         chunkRepository,
         new ChunkCompletionPolicy(),
         publisher,
       ),
       packageArchive: new PackageArchiveUseCase(
-        videoRepository,
+        processingVideoRepository,
         frameStorage,
         new ZipArchiveBuilder(),
         videoStorage,

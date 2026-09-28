@@ -24,6 +24,7 @@ import { ProcessChunkUseCase } from '../../../src/contexts/video-processing/appl
 import {
   AllChunksCompletedEvent,
   ChunkCompletedEvent,
+  ChunkFailedEvent,
   MessagePublisher,
   ProcessVideoChunkEvent,
   VideoAnalyzedEvent,
@@ -45,6 +46,7 @@ import { VideoSize } from '../../../src/contexts/video-management/domain/video-s
 import { VideoStatus } from '../../../src/contexts/video-management/domain/video-status';
 import { S3VideoStorage } from '../../../src/contexts/video-management/infrastructure/s3-video-storage';
 import { PostgresVideoRepository } from '../../../src/contexts/video-management/infrastructure/typeorm/postgres-video.repository';
+import { TypeormProcessingVideoRepository } from '../../../src/main/typeorm-processing-video.repository';
 import { VideoEntity } from '../../../src/contexts/video-management/infrastructure/typeorm/video.entity';
 
 const execFileAsync = promisify(execFile);
@@ -57,6 +59,7 @@ class FakeMessagePublisher implements MessagePublisher {
   public readonly analyzed: VideoAnalyzedEvent[] = [];
   public readonly processed: ProcessVideoChunkEvent[] = [];
   public readonly completed: ChunkCompletedEvent[] = [];
+  public readonly chunkFailed: ChunkFailedEvent[] = [];
   public readonly all: AllChunksCompletedEvent[] = [];
   public readonly videoCompleted: VideoCompletedEvent[] = [];
   public readonly failed: VideoProcessingFailedEvent[] = [];
@@ -73,6 +76,11 @@ class FakeMessagePublisher implements MessagePublisher {
 
   public publishChunkCompleted(event: ChunkCompletedEvent): Promise<void> {
     this.completed.push(event);
+    return Promise.resolve();
+  }
+
+  public publishChunkFailed(event: ChunkFailedEvent): Promise<void> {
+    this.chunkFailed.push(event);
     return Promise.resolve();
   }
 
@@ -195,6 +203,7 @@ describe('video-processing pipeline (integration)', () => {
     };
 
     const videoRepository = new PostgresVideoRepository(dataSource);
+    const processingVideoRepository = new TypeormProcessingVideoRepository(dataSource);
     const chunkRepository = new PostgresChunkRepository(dataSource);
     const publisher = new FakeMessagePublisher();
     const videoStorage = new S3VideoStorage(s3Options);
@@ -211,7 +220,7 @@ describe('video-processing pipeline (integration)', () => {
     );
 
     const analyze = new AnalyzeVideoUseCase(
-      videoRepository,
+      processingVideoRepository,
       videoStorage,
       new FFprobeAnalyzer(ffprobeInstaller.path),
       publisher,
@@ -220,7 +229,7 @@ describe('video-processing pipeline (integration)', () => {
 
     const chunkSeconds = 2;
     const planChunks = new PlanChunksUseCase(
-      videoRepository,
+      processingVideoRepository,
       chunkRepository,
       publisher,
       chunkSeconds,
@@ -250,7 +259,7 @@ describe('video-processing pipeline (integration)', () => {
     }
 
     const aggregate = new AggregateChunksUseCase(
-      videoRepository,
+      processingVideoRepository,
       chunkRepository,
       new ChunkCompletionPolicy(),
       publisher,
@@ -258,7 +267,7 @@ describe('video-processing pipeline (integration)', () => {
     await aggregate.execute({ videoId: VIDEO_ID });
 
     const packageArchive = new PackageArchiveUseCase(
-      videoRepository,
+      processingVideoRepository,
       frameStorage,
       new ZipArchiveBuilder(),
       videoStorage,

@@ -20,6 +20,11 @@ export interface ChunkCompletedEvent {
   frameCount: number;
 }
 
+export interface ChunkFailedEvent {
+  videoId: string;
+  chunkIndex: number;
+}
+
 export interface AllChunksCompletedEvent {
   videoId: string;
   totalChunks: number;
@@ -28,6 +33,7 @@ export interface AllChunksCompletedEvent {
 
 export interface VideoCompletedEvent {
   videoId: string;
+  ownerId: string;
   zipKey: string;
   frameCount: number;
 }
@@ -43,6 +49,7 @@ export interface MessagePublisher {
   publishVideoAnalyzed(event: VideoAnalyzedEvent): Promise<void>;
   publishProcessVideoChunk(event: ProcessVideoChunkEvent): Promise<void>;
   publishChunkCompleted(event: ChunkCompletedEvent): Promise<void>;
+  publishChunkFailed(event: ChunkFailedEvent): Promise<void>;
   publishAllChunksCompleted(event: AllChunksCompletedEvent): Promise<void>;
   publishVideoCompleted(event: VideoCompletedEvent): Promise<void>;
   publishVideoProcessingFailed(event: VideoProcessingFailedEvent): Promise<void>;

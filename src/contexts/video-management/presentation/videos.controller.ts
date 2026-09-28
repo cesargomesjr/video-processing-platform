@@ -22,7 +22,7 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
 
-import { JwtGuard } from '../../identity/presentation/jwt.guard';
+import { JwtGuard } from '../../../platform/security/jwt.guard';
 import { RateLimitExceededError } from '../../../platform/rate-limit/rate-limiter';
 import { MetricsService } from '../../../platform/metrics/metrics.service';
 import { RateLimitService } from '../../../platform/rate-limit/rate-limit.service';

@@ -92,6 +92,54 @@ describe('RabbitMqConsumer', () => {
     await consumer.stop();
   });
 
+  it('processes one message at a time per consumer', async () => {
+    const queue = `prefetch.spec.${Date.now()}`;
+    const routingKey = queue;
+    let calls = 0;
+    let active = 0;
+    let maxActive = 0;
+    let releaseFirst: () => void = () => undefined;
+    const firstBlocked = new Promise<void>((resolve) => {
+      releaseFirst = resolve;
+    });
+
+    const consumer = new RabbitMqConsumer({
+      url,
+      exchange: EXCHANGE,
+      queue,
+      routingKey,
+      maxRetries: 1,
+      baseBackoffMs: 50,
+      handler: async (): Promise<void> => {
+        calls += 1;
+        active += 1;
+        maxActive = Math.max(maxActive, active);
+        if (calls === 1) {
+          await firstBlocked;
+        }
+        active -= 1;
+      },
+    });
+
+    await consumer.start();
+    try {
+      for (let index = 0; index < 2; index += 1) {
+        publisher.publish(EXCHANGE, routingKey, Buffer.from(JSON.stringify({ index })));
+      }
+
+      await waitFor(() => calls === 1, 5_000);
+      await new Promise((resolve) => setTimeout(resolve, 150));
+      expect(calls).toBe(1);
+
+      releaseFirst();
+      await waitFor(() => calls === 2 && active === 0, 5_000);
+      expect(maxActive).toBe(1);
+    } finally {
+      releaseFirst();
+      await consumer.stop();
+    }
+  });
+
   it('sends the message to the DLQ after exhausting retries', async () => {
     const queue = 'dlq.spec';
     const routingKey = 'dlq.event';

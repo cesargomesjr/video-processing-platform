@@ -4,6 +4,7 @@ import { ChunkRepository } from '../../../src/contexts/video-processing/applicat
 import {
   AllChunksCompletedEvent,
   ChunkCompletedEvent,
+  ChunkFailedEvent,
   MessagePublisher,
   ProcessVideoChunkEvent,
   VideoAnalyzedEvent,
@@ -86,6 +87,7 @@ class FakeMessagePublisher implements MessagePublisher {
   public readonly analyzed: VideoAnalyzedEvent[] = [];
   public readonly processed: ProcessVideoChunkEvent[] = [];
   public readonly completed: ChunkCompletedEvent[] = [];
+  public readonly chunkFailed: ChunkFailedEvent[] = [];
   public readonly all: AllChunksCompletedEvent[] = [];
   public readonly videoCompleted: VideoCompletedEvent[] = [];
   public readonly failed: VideoProcessingFailedEvent[] = [];
@@ -102,6 +104,11 @@ class FakeMessagePublisher implements MessagePublisher {
 
   public publishChunkCompleted(event: ChunkCompletedEvent): Promise<void> {
     this.completed.push(event);
+    return Promise.resolve();
+  }
+
+  public publishChunkFailed(event: ChunkFailedEvent): Promise<void> {
+    this.chunkFailed.push(event);
     return Promise.resolve();
   }
 
@@ -247,6 +254,9 @@ describe('AggregateChunksUseCase', () => {
     expect(publisher.failed).toHaveLength(1);
     expect(publisher.failed[0]?.videoId).toBe('video-1');
     expect(publisher.failed[0]?.ownerId).toBe('user-1');
+
+    await useCase.execute({ videoId: 'video-1' });
+    expect(publisher.failed).toHaveLength(1);
   });
 
   it('throws when the video does not exist', async () => {

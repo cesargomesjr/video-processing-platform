@@ -23,7 +23,7 @@ import { InvalidEmailError } from '../domain/email';
 import { WeakPasswordError } from '../domain/plain-password';
 import { RateLimitExceededError } from '../../../platform/rate-limit/rate-limiter';
 import { RateLimitService } from '../../../platform/rate-limit/rate-limit.service';
-import { JwtGuard } from './jwt.guard';
+import { JwtGuard } from '../../../platform/security/jwt.guard';
 
 interface AuthInput {
   email: string;

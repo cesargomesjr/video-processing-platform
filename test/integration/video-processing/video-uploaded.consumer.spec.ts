@@ -6,6 +6,7 @@ import { DataSource } from 'typeorm';
 import { RabbitMQMessagePublisher } from '../../../src/contexts/video-management/infrastructure/rabbitmq-message-publisher';
 import { S3VideoStorage } from '../../../src/contexts/video-management/infrastructure/s3-video-storage';
 import { PostgresVideoRepository } from '../../../src/contexts/video-management/infrastructure/typeorm/postgres-video.repository';
+import { TypeormProcessingVideoRepository } from '../../../src/main/typeorm-processing-video.repository';
 import { VideoEntity } from '../../../src/contexts/video-management/infrastructure/typeorm/video.entity';
 import { Video } from '../../../src/contexts/video-management/domain/video';
 import { VideoFormat } from '../../../src/contexts/video-management/domain/video-format';
@@ -25,6 +26,7 @@ describe('VideoUploadedConsumer (integration)', () => {
   let minio: StartedTestContainer;
   let dataSource: DataSource;
   let repository: PostgresVideoRepository;
+  let processingVideoRepository: TypeormProcessingVideoRepository;
   let publisher: RabbitMQMessagePublisher;
   let consumer: VideoUploadedConsumer;
   let s3Client: S3Client;
@@ -68,6 +70,7 @@ describe('VideoUploadedConsumer (integration)', () => {
     await dataSource.initialize();
 
     repository = new PostgresVideoRepository(dataSource);
+    processingVideoRepository = new TypeormProcessingVideoRepository(dataSource);
 
     const s3Endpoint = `http://${minio.getHost()}:${minio.getMappedPort(9000)}`;
     s3Client = new S3Client({
@@ -93,7 +96,7 @@ describe('VideoUploadedConsumer (integration)', () => {
     publisher = new RabbitMQMessagePublisher(rabbitmqUrl);
     consumer = new VideoUploadedConsumer(
       rabbitmqUrl,
-      new CompleteVideoUseCase(repository, videoStorage),
+      new CompleteVideoUseCase(processingVideoRepository, videoStorage),
     );
 
     await consumer.start();

@@ -1,12 +1,9 @@
-import { VideoRepository } from '../../video-management/application/ports/video-repository';
-import { VideoStorage } from '../../video-management/application/ports/video-storage';
-import { Video } from '../../video-management/domain/video';
-import { VideoId } from '../../video-management/domain/video-id';
-import { VideoStatus } from '../../video-management/domain/video-status';
 import { VideoProcessingError } from './errors';
 import { ArchiveBuilder } from './ports/archive-builder';
 import { FrameStorage } from './ports/frame-storage';
 import { MessagePublisher } from './ports/message-publisher';
+import { ProcessingVideo, ProcessingVideoRepository } from './ports/processing-video-repository';
+import { VideoFileStorage } from './ports/video-file-storage';
 
 export interface PackageArchiveInput {
   videoId: string;
@@ -14,22 +11,21 @@ export interface PackageArchiveInput {
 
 export class PackageArchiveUseCase {
   public constructor(
-    private readonly videoRepository: VideoRepository,
+    private readonly videoRepository: ProcessingVideoRepository,
     private readonly frameStorage: FrameStorage,
     private readonly archiveBuilder: ArchiveBuilder,
-    private readonly videoStorage: VideoStorage,
+    private readonly videoStorage: VideoFileStorage,
     private readonly messagePublisher: MessagePublisher,
   ) {}
 
   public async execute(input: PackageArchiveInput): Promise<void> {
-    const id = VideoId.create(input.videoId);
-    const video = await this.videoRepository.findById(id);
+    const video = await this.videoRepository.findById(input.videoId);
 
     if (video === null) {
       throw new VideoProcessingError(`Video not found: ${input.videoId}`);
     }
 
-    if (video.status !== VideoStatus.AGGREGATING) {
+    if (video.status !== 'AGGREGATING') {
       return;
     }
 
@@ -39,7 +35,7 @@ export class PackageArchiveUseCase {
     try {
       keys = await this.frameStorage.list(prefix);
     } catch {
-      await this.markFailed(video);
+      await this.markFailed(video, 'Frame listing failed');
       return;
     }
 
@@ -53,28 +49,37 @@ export class PackageArchiveUseCase {
         })),
       );
       const zipBuffer = await this.archiveBuilder.build(files);
-      const zipKey = `archives/${video.id.value}.zip`;
+      const zipKey = `archives/${video.id}.zip`;
 
       await this.videoStorage.put(zipKey, zipBuffer);
 
-      video.complete(zipKey);
-      const completed = await this.videoRepository.saveTransition(video, VideoStatus.AGGREGATING);
+      const completed = await this.videoRepository.markCompleted(video.id, zipKey);
       if (!completed) {
         return;
       }
 
       await this.messagePublisher.publishVideoCompleted({
-        videoId: video.id.value,
+        videoId: video.id,
+        ownerId: video.ownerId,
         zipKey,
         frameCount: files.length,
       });
     } catch {
-      await this.markFailed(video);
+      await this.markFailed(video, 'Archive packaging failed');
     }
   }
 
-  private async markFailed(video: Video): Promise<void> {
-    video.transitionTo(VideoStatus.FAILED);
-    await this.videoRepository.saveTransition(video, VideoStatus.AGGREGATING);
+  private async markFailed(video: ProcessingVideo, reason: string): Promise<void> {
+    const failed = await this.videoRepository.markFailed(video.id, 'AGGREGATING');
+    if (!failed) {
+      return;
+    }
+
+    await this.messagePublisher.publishVideoProcessingFailed({
+      videoId: video.id,
+      ownerId: video.ownerId,
+      reason,
+      failedAt: new Date(),
+    });
   }
 }
