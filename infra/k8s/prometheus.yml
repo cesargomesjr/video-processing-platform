@@ -1,0 +1,22 @@
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+
+scrape_configs:
+  - job_name: fiapx-api
+    kubernetes_sd_configs:
+      - role: pod
+        namespaces:
+          names: [fiapx]
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_label_app]
+        action: keep
+        regex: api
+      - source_labels: [__meta_kubernetes_pod_container_name]
+        action: keep
+        regex: api
+      - source_labels: [__meta_kubernetes_pod_container_port_number]
+        action: keep
+        regex: '3000'
+      - source_labels: [__meta_kubernetes_pod_name]
+        target_label: pod

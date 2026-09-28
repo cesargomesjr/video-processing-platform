@@ -130,18 +130,19 @@ docker compose -f infra/docker-compose.yml up -d postgres rabbitmq redis minio m
 
 Copie `.env.example` para `.env` e ajuste os valores. As variáveis principais são:
 
-| Variável                   | Descrição                          |
-| -------------------------- | ---------------------------------- |
-| `DATABASE_URL`             | URL do PostgreSQL                  |
-| `RABBITMQ_URL`             | URL do RabbitMQ                    |
-| `REDIS_URL`                | URL do Redis                       |
-| `S3_ENDPOINT`              | Endpoint do MinIO/S3               |
-| `S3_BUCKET`                | Bucket de armazenamento            |
-| `JWT_SECRET`               | Segredo do JWT                     |
-| `CHUNK_SECONDS`            | Duração de cada chunk (segundos)   |
-| `MAX_CHUNKS`               | Número máximo de chunks            |
-| `MAX_VIDEO_SIZE_BYTES`     | Tamanho máximo de upload           |
-| `DOWNLOAD_URL_TTL_SECONDS` | TTL das URLs assinadas de download |
+| Variável                   | Descrição                                                    |
+| -------------------------- | ------------------------------------------------------------ |
+| `DATABASE_URL`             | URL do PostgreSQL                                            |
+| `RABBITMQ_URL`             | URL do RabbitMQ                                              |
+| `REDIS_URL`                | URL do Redis                                                 |
+| `S3_ENDPOINT`              | Endpoint do MinIO/S3                                         |
+| `S3_BUCKET`                | Bucket de armazenamento                                      |
+| `JWT_SECRET`               | Segredo do JWT                                               |
+| `CHUNK_SECONDS`            | Duração de cada chunk (segundos)                             |
+| `MAX_CHUNKS`               | Número máximo de chunks                                      |
+| `MAX_VIDEO_SIZE_BYTES`     | Tamanho máximo de upload                                     |
+| `DOWNLOAD_URL_TTL_SECONDS` | TTL das URLs assinadas de download                           |
+| `WORKER_REPLICAS`          | Número de containers do worker no Docker Compose (padrão: 1) |
 
 ### 5.4 Instalar e subir
 
@@ -153,6 +154,20 @@ npm run start:worker
 ```
 
 A API sobe em `http://localhost:3000`.
+
+Para rodar o worker pelo Docker Compose com várias réplicas, ajuste `WORKER_REPLICAS` no
+`.env` da raiz e aplique a configuração:
+
+```bash
+docker compose -f infra/docker-compose.yml up -d worker
+docker compose -f infra/docker-compose.yml ps worker
+```
+
+Por exemplo, `WORKER_REPLICAS=3` inicia três workers consumindo a mesma fila. Alterar o valor
+no `.env` não altera containers em execução até rodar `docker compose up` novamente. Essa
+é uma quantidade fixa, não autoescalonamento: para crescer ou reduzir automaticamente conforme
+o tamanho da fila seria preciso um controlador externo. O MinIO precisa estar ativo para o worker
+processar vídeos.
 
 ### 5.5 Página web
 
@@ -221,6 +236,7 @@ e usam FFmpeg real com vídeos de fixture. O CI valida lint, typecheck, testes c
 - [`docs/02-arquitetura-alvo.md`](docs/02-arquitetura-alvo.md) — arquitetura TO-BE e ADRs
 - [`docs/03-especificacao-funcional.md`](docs/03-especificacao-funcional.md) — domínio, casos de uso e contratos
 - [`docs/04-plano-de-implementacao.md`](docs/04-plano-de-implementacao.md) — fases, CI/CD e DoD
+- [`docs/07-kubernetes-local.md`](docs/07-kubernetes-local.md) — deploy local no Minikube e HPA
 
 ---
 

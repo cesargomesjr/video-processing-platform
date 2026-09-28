@@ -145,7 +145,7 @@ services:
     build:
       context: ..
       dockerfile: infra/docker/worker.Dockerfile
-    container_name: fiapx-worker
+    scale: ${WORKER_REPLICAS:-1}
     restart: unless-stopped
     environment:
       NODE_ENV: production
