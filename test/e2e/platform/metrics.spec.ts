@@ -47,6 +47,8 @@ describe('Metrics (e2e)', () => {
   it('exposes prometheus metrics', async () => {
     const response = await request(httpServer).get('/metrics').expect(200);
 
+    expect(response.headers['content-type']).toMatch(/^text\/plain;/);
+    expect(response.headers['content-type']).toContain('version=0.0.4');
     expect(response.text).toContain('# TYPE videos_total counter');
     expect(response.text).toContain('# TYPE video_processing_duration_seconds histogram');
     expect(response.text).toContain('# TYPE http_request_duration_seconds histogram');
