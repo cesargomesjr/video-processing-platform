@@ -4,6 +4,7 @@ import { NestFactory } from '@nestjs/core';
 import { CreateBucketCommand, S3Client } from '@aws-sdk/client-s3';
 
 import { MetricsService } from '../../../src/platform/metrics/metrics.service';
+import { ensureVideoProcessingTopology } from '../../../src/platform/messaging/video-processing-topology';
 import { loadAppConfig } from '../../../src/platform/config/app-config.schema';
 import { createCorrelationMiddleware } from '../../../src/platform/logger/correlation.middleware';
 import { PinoLogger } from '../../../src/platform/logger/pino.logger';
@@ -51,6 +52,7 @@ async function bootstrap(): Promise<void> {
   });
 
   await ensureS3Bucket(config);
+  await ensureVideoProcessingTopology(config.rabbitmqUrl);
   await app.listen(config.port);
 }
 

@@ -1,4 +1,9 @@
+import { randomUUID } from 'node:crypto';
 import { Channel, ChannelModel, connect, ConsumeMessage } from 'amqplib';
+
+import { runWithCorrelationId } from '../../../platform/logger/correlation-context';
+import type { PinoLogger } from '../../../platform/logger/pino.logger';
+import { traceIdFrom } from '../../../platform/tracing/traceparent';
 
 export interface RabbitMqConsumerOptions {
   url: string;
@@ -8,6 +13,7 @@ export interface RabbitMqConsumerOptions {
   maxRetries: number;
   baseBackoffMs: number;
   handler: (message: ConsumeMessage) => Promise<void>;
+  logger?: Pick<PinoLogger, 'info' | 'error'>;
 }
 
 export class RabbitMqConsumer {
@@ -69,28 +75,68 @@ export class RabbitMqConsumer {
     }
 
     const retryCount = this.parseRetryCount(message);
+    const headers = message.properties.headers ?? {};
+    const incomingId: unknown = headers['x-correlation-id'];
+    const traceparent: unknown = headers.traceparent;
+    const correlationId =
+      (typeof incomingId === 'string' && incomingId.length > 0 ? incomingId : undefined) ??
+      traceIdFrom(typeof traceparent === 'string' ? traceparent : undefined) ??
+      randomUUID();
+    const details = {
+      queue: this.options.queue,
+      routingKey: this.options.routingKey,
+      retryCount,
+      ...this.messageIdentifiers(message),
+    };
 
-    try {
-      await this.options.handler(message);
-      this.channel?.ack(message);
-    } catch {
-      if (retryCount >= this.options.maxRetries) {
-        this.channel?.publish(exchange, dlqRoutingKey, message.content, {
-          persistent: true,
-          contentType: 'application/json',
-          headers: message.properties.headers,
-        });
-      } else {
-        const backoffMs = this.options.baseBackoffMs * 2 ** retryCount;
-        this.channel?.publish(exchange, retryRoutingKey, message.content, {
-          persistent: true,
-          contentType: 'application/json',
-          headers: { 'x-retry-count': retryCount + 1 },
-          expiration: String(backoffMs),
-        });
+    await runWithCorrelationId(correlationId, async () => {
+      this.options.logger?.info(details, 'worker.message.started');
+      try {
+        await this.options.handler(message);
+        this.options.logger?.info(details, 'worker.message.completed');
+        this.channel?.ack(message);
+      } catch (error) {
+        this.options.logger?.error(error);
+        if (retryCount >= this.options.maxRetries) {
+          this.channel?.publish(exchange, dlqRoutingKey, message.content, {
+            persistent: true,
+            contentType: 'application/json',
+            headers: { ...headers, 'x-correlation-id': correlationId },
+          });
+          this.options.logger?.info(details, 'worker.message.dead_lettered');
+        } else {
+          const backoffMs = this.options.baseBackoffMs * 2 ** retryCount;
+          this.channel?.publish(exchange, retryRoutingKey, message.content, {
+            persistent: true,
+            contentType: 'application/json',
+            headers: {
+              ...headers,
+              'x-correlation-id': correlationId,
+              'x-retry-count': retryCount + 1,
+            },
+            expiration: String(backoffMs),
+          });
+          this.options.logger?.info(details, 'worker.message.retrying');
+        }
+
+        this.channel?.ack(message);
       }
+    });
+  }
 
-      this.channel?.ack(message);
+  private messageIdentifiers(message: ConsumeMessage): { videoId?: string; userId?: string } {
+    try {
+      const payload: unknown = JSON.parse(message.content.toString());
+      if (payload === null || typeof payload !== 'object') {
+        return {};
+      }
+      const record = payload as Record<string, unknown>;
+      return {
+        ...(typeof record.videoId === 'string' ? { videoId: record.videoId } : {}),
+        ...(typeof record.ownerId === 'string' ? { userId: record.ownerId } : {}),
+      };
+    } catch {
+      return {};
     }
   }
 

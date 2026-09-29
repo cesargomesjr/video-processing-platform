@@ -1,4 +1,5 @@
 import { Channel, ChannelModel, connect } from 'amqplib';
+import { getCorrelationId } from '../../../platform/logger/correlation-context';
 import { generateTraceparent } from '../../../platform/tracing/traceparent';
 
 import {
@@ -48,13 +49,24 @@ export class RabbitMqMessagePublisher implements MessagePublisher {
     await this.publish('video.failed', event);
   }
 
+  public async close(): Promise<void> {
+    await this.channel?.close();
+    await this.connection?.close();
+    this.channel = null;
+    this.connection = null;
+  }
+
   private async publish(routingKey: string, event: unknown): Promise<void> {
     const channel = await this.getChannel();
+    const correlationId = getCorrelationId();
     await channel.assertExchange(EXCHANGE, 'topic', { durable: true });
     channel.publish(EXCHANGE, routingKey, Buffer.from(JSON.stringify(event)), {
       persistent: true,
       contentType: 'application/json',
-      headers: { traceparent: generateTraceparent() },
+      headers: {
+        traceparent: generateTraceparent(),
+        ...(correlationId === undefined ? {} : { 'x-correlation-id': correlationId }),
+      },
     });
   }
 

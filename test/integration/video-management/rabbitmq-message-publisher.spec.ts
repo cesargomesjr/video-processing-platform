@@ -3,6 +3,7 @@ import { GenericContainer, StartedTestContainer, Wait } from 'testcontainers';
 
 import { VideoUploadedEvent } from '../../../src/contexts/video-management/application/ports/message-publisher';
 import { RabbitMQMessagePublisher } from '../../../src/contexts/video-management/infrastructure/rabbitmq-message-publisher';
+import { runWithCorrelationId } from '../../../src/platform/logger/correlation-context';
 
 describe('RabbitMQMessagePublisher', () => {
   let container: StartedTestContainer;
@@ -33,6 +34,10 @@ describe('RabbitMQMessagePublisher', () => {
   }, 120_000);
 
   afterAll(async () => {
+    if (publisher !== undefined) {
+      await publisher.close();
+    }
+
     if (channel !== undefined) {
       await channel.close();
     }
@@ -55,7 +60,7 @@ describe('RabbitMQMessagePublisher', () => {
       sizeBytes: 1024,
     };
 
-    await publisher.publishVideoUploaded(event);
+    await runWithCorrelationId('corr-upload-123', () => publisher.publishVideoUploaded(event));
     await publisher.publishVideoUploaded(event);
 
     let message = await channel.get(queueName, { noAck: true });
@@ -69,6 +74,7 @@ describe('RabbitMQMessagePublisher', () => {
       const received = JSON.parse(message.content.toString()) as VideoUploadedEvent;
       expect(received).toEqual(event);
       expect(message.properties.contentType).toBe('application/json');
+      expect(message.properties.headers?.['x-correlation-id']).toBe('corr-upload-123');
     }
   });
 });

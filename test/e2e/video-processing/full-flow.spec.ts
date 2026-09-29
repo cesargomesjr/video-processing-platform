@@ -31,9 +31,11 @@ import { S3FrameStorage } from '../../../src/contexts/video-processing/infrastru
 import { ZipArchiveBuilder } from '../../../src/contexts/video-processing/infrastructure/zip-archive-builder';
 import { PostgresChunkRepository } from '../../../src/contexts/video-processing/infrastructure/typeorm/postgres-chunk.repository';
 import { VideoProcessingPipeline } from '../../../src/main/video-processing-pipeline';
+import { RabbitMQMessagePublisher } from '../../../src/contexts/video-management/infrastructure/rabbitmq-message-publisher';
 import { S3VideoStorage } from '../../../src/contexts/video-management/infrastructure/s3-video-storage';
+import { VideoEntity } from '../../../src/contexts/video-management/infrastructure/typeorm/video.entity';
 import { TypeormProcessingVideoRepository } from '../../../src/main/typeorm-processing-video.repository';
-import { DATA_SOURCE } from '../../../src/main/tokens';
+import { DATA_SOURCE, MESSAGE_PUBLISHER } from '../../../src/main/tokens';
 
 const execFileAsync = promisify(execFile);
 const BUCKET = 'fiapx-e2e';
@@ -62,6 +64,7 @@ describe('Video processing full flow (e2e)', () => {
   let minio: StartedTestContainer;
   let rabbitmq: StartedTestContainer;
   let pipeline: VideoProcessingPipeline;
+  let processingPublisher: RabbitMqMessagePublisher;
   let fixture: Buffer;
   let fixtureDirectory: string;
 
@@ -149,7 +152,7 @@ describe('Video processing full flow (e2e)', () => {
     };
     const processingVideoRepository = new TypeormProcessingVideoRepository(dataSource);
     const chunkRepository = new PostgresChunkRepository(dataSource);
-    const publisher = new RabbitMqMessagePublisher(process.env.RABBITMQ_URL);
+    processingPublisher = new RabbitMqMessagePublisher(process.env.RABBITMQ_URL);
     const videoStorage = new S3VideoStorage(s3Options);
     const frameStorage = new S3FrameStorage(s3Options);
 
@@ -159,12 +162,12 @@ describe('Video processing full flow (e2e)', () => {
         processingVideoRepository,
         videoStorage,
         new FFprobeAnalyzer(ffprobeInstaller.path),
-        publisher,
+        processingPublisher,
       ),
       planChunks: new PlanChunksUseCase(
         processingVideoRepository,
         chunkRepository,
-        publisher,
+        processingPublisher,
         2,
         100,
       ),
@@ -173,20 +176,20 @@ describe('Video processing full flow (e2e)', () => {
         videoStorage,
         new FFmpegFrameExtractor(ffmpegInstaller.path),
         frameStorage,
-        publisher,
+        processingPublisher,
       ),
       aggregate: new AggregateChunksUseCase(
         processingVideoRepository,
         chunkRepository,
         new ChunkCompletionPolicy(),
-        publisher,
+        processingPublisher,
       ),
       packageArchive: new PackageArchiveUseCase(
         processingVideoRepository,
         frameStorage,
         new ZipArchiveBuilder(),
         videoStorage,
-        publisher,
+        processingPublisher,
       ),
     });
     await pipeline.start();
@@ -197,7 +200,14 @@ describe('Video processing full flow (e2e)', () => {
       await pipeline.stop();
     }
 
-    await app.close();
+    if (processingPublisher !== undefined) {
+      await processingPublisher.close();
+    }
+
+    if (app !== undefined) {
+      await app.get<RabbitMQMessagePublisher>(MESSAGE_PUBLISHER).close();
+      await app.close();
+    }
 
     if (minio !== undefined) {
       await minio.stop();
@@ -239,6 +249,16 @@ describe('Video processing full flow (e2e)', () => {
         .expect(200);
       return (response.body as { status: string }).status === 'COMPLETED';
     }, 20_000);
+
+    const stored = await app
+      .get<DataSource>(DATA_SOURCE)
+      .getRepository(VideoEntity)
+      .findOneByOrFail({
+        id: videoId,
+      });
+    const root = `user@example.com/Original/movie--${videoId}`;
+    expect(stored.storageKey).toBe(`${root}/original.mp4`);
+    expect(stored.zipKey).toBe(`${root}/archives/frames.zip`);
 
     await request(httpServer)
       .get(`/videos/${videoId}/download`)

@@ -11,6 +11,8 @@ import {
   ProcessChunkUseCase,
 } from '../contexts/video-processing/application/process-chunk.use-case';
 import { RabbitMqConsumer } from '../contexts/video-processing/infrastructure/rabbitmq-consumer';
+import type { PinoLogger } from '../platform/logger/pino.logger';
+import { VIDEO_PROCESSING_QUEUES } from '../platform/messaging/video-processing-topology';
 
 const EXCHANGE = 'video.events';
 
@@ -23,6 +25,7 @@ interface VideoProcessingPipelineOptions {
   packageArchive: PackageArchiveUseCase;
   notifyFailure?: NotifyProcessingFailureUseCase;
   notifyCompletion?: NotifyProcessingCompletionUseCase;
+  logger?: Pick<PinoLogger, 'info' | 'error'>;
 }
 
 export class VideoProcessingPipeline {
@@ -32,46 +35,52 @@ export class VideoProcessingPipeline {
 
   public async start(): Promise<void> {
     const consumer = (
-      queue: string,
       routingKey: string,
       handler: (message: ConsumeMessage) => Promise<void>,
-    ): RabbitMqConsumer =>
-      new RabbitMqConsumer({
+    ): RabbitMqConsumer => {
+      const entry = VIDEO_PROCESSING_QUEUES.find((item) => item.routingKey === routingKey);
+      if (entry === undefined) {
+        throw new Error(`No queue configured for ${routingKey}`);
+      }
+
+      return new RabbitMqConsumer({
         url: this.options.url,
         exchange: EXCHANGE,
-        queue,
+        queue: entry.queue,
         routingKey,
         maxRetries: 3,
         baseBackoffMs: 100,
         handler,
+        logger: this.options.logger,
       });
+    };
 
     this.consumers.push(
-      consumer('video.uploaded.analyzer', 'video.uploaded', async (message) => {
+      consumer('video.uploaded', async (message) => {
         const payload = JSON.parse(message.content.toString()) as { videoId: string };
         await this.options.analyze.execute({ videoId: payload.videoId });
       }),
-      consumer('video.analyzed.orchestrator', 'video.analyzed', async (message) => {
+      consumer('video.analyzed', async (message) => {
         const payload = JSON.parse(message.content.toString()) as { videoId: string };
         await this.options.planChunks.execute({ videoId: payload.videoId });
       }),
-      consumer('video.chunk.process.worker', 'video.chunk.process', async (message) => {
+      consumer('video.chunk.process', async (message) => {
         const payload = JSON.parse(message.content.toString()) as ProcessChunkInput;
         await this.options.processChunk.execute(payload);
       }),
-      consumer('video.chunk.completed.aggregator', 'video.chunk.completed', async (message) => {
+      consumer('video.chunk.completed', async (message) => {
         const payload = JSON.parse(message.content.toString()) as { videoId: string };
         await this.options.aggregate.execute({ videoId: payload.videoId });
       }),
-      consumer('video.chunk.failed.aggregator', 'video.chunk.failed', async (message) => {
+      consumer('video.chunk.failed', async (message) => {
         const payload = JSON.parse(message.content.toString()) as { videoId: string };
         await this.options.aggregate.execute({ videoId: payload.videoId });
       }),
-      consumer('video.chunks.all.packager', 'video.chunks.all', async (message) => {
+      consumer('video.chunks.all', async (message) => {
         const payload = JSON.parse(message.content.toString()) as { videoId: string };
         await this.options.packageArchive.execute({ videoId: payload.videoId });
       }),
-      consumer('video.completed.notification', 'video.completed', async (message) => {
+      consumer('video.completed', async (message) => {
         const payload = JSON.parse(message.content.toString()) as {
           videoId: string;
           ownerId: string;
@@ -80,7 +89,7 @@ export class VideoProcessingPipeline {
           await this.options.notifyCompletion.execute(payload);
         }
       }),
-      consumer('video.failed.notification', 'video.failed', async (message) => {
+      consumer('video.failed', async (message) => {
         const payload = JSON.parse(message.content.toString()) as {
           videoId: string;
           ownerId: string;

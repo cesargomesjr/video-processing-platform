@@ -53,6 +53,7 @@ async function main(): Promise<void> {
 
   const pipeline = new VideoProcessingPipeline({
     url: config.rabbitmqUrl,
+    logger,
     analyze: new AnalyzeVideoUseCase(
       videoRepository,
       videoStorage,

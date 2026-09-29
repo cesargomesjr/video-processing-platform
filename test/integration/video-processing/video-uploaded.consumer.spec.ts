@@ -103,6 +103,10 @@ describe('VideoUploadedConsumer (integration)', () => {
   }, 180_000);
 
   afterAll(async () => {
+    if (publisher !== undefined) {
+      await publisher.close();
+    }
+
     if (consumer !== undefined) {
       await consumer.stop();
     }
@@ -135,7 +139,7 @@ describe('VideoUploadedConsumer (integration)', () => {
       originalName: 'movie.mp4',
       format: VideoFormat.create('mp4'),
       size: VideoSize.create(1024, 1024 * 1024),
-      storageKey: `original/${OWNER_ID}/${VIDEO_ID}.mp4`,
+      storageKey: `email@email.com.br/Original/movie--${VIDEO_ID}/original.mp4`,
     });
     await repository.save(video);
 
@@ -151,10 +155,15 @@ describe('VideoUploadedConsumer (integration)', () => {
 
     expect(completed).not.toBeNull();
     expect(completed?.status).toBe(VideoStatus.COMPLETED);
-    expect(completed?.zipKey).toBe(`archives/${VIDEO_ID}.zip`);
+    expect(completed?.zipKey).toBe(
+      `email@email.com.br/Original/movie--${VIDEO_ID}/archives/frames.zip`,
+    );
 
     const output = await s3Client.send(
-      new GetObjectCommand({ Bucket: BUCKET, Key: `archives/${VIDEO_ID}.zip` }),
+      new GetObjectCommand({
+        Bucket: BUCKET,
+        Key: `email@email.com.br/Original/movie--${VIDEO_ID}/archives/frames.zip`,
+      }),
     );
     const body = output.Body === undefined ? null : await output.Body.transformToByteArray();
     expect(body).not.toBeNull();
