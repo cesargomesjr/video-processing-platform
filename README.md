@@ -1,4 +1,4 @@
-# FIAP X — Plataforma de Processamento de Vídeos
+# videoPIC — Plataforma de Processamento de Vídeos
 
 Plataforma distribuída para **upload, processamento assíncrono e download** de vídeos. Ela converte um
 vídeo em um ZIP contendo os frames extraídos, de forma escalável, idempotente e observável.

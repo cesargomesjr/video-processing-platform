@@ -17,7 +17,7 @@
 flowchart LR
     U[Usuário<br/>upload, status, download]
     A[Cliente API<br/>CI / scripts / Postman]
-    P[FIAP X — Plataforma de<br/>Processamento de Vídeos]
+    P[videoPIC — Plataforma de<br/>Processamento de Vídeos]
     M[Servidor de E-mail<br/>SMTP / SES]
     O[(Object Storage<br/>S3 / MinIO)]
 

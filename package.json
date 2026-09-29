@@ -2,7 +2,7 @@
   "name": "video-processing-platform",
   "version": "0.1.0",
   "private": true,
-  "description": "Plataforma distribuída de processamento de vídeos (FIAP X)",
+  "description": "videoPIC: plataforma distribuída de processamento de vídeos",
   "workspaces": [
     "apps/*"
   ],

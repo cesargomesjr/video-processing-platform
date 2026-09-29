@@ -1,4 +1,4 @@
-# FIAP X — Documentação de Arquitetura e Especificação
+# videoPIC — Documentação de Arquitetura e Especificação
 
 Especificação da nova plataforma de processamento de vídeos, decomposta a partir do projeto base
 (`../main.go`, Go/Gin, 496 linhas, monólito single-file).
