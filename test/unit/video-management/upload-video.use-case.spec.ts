@@ -22,12 +22,16 @@ describe('UploadVideoUseCase', () => {
   let publisher: FakeMessagePublisher;
   let inspector: FakeVideoContentInspector;
   let useCase: UploadVideoUseCase;
+  let emailResolver: { resolve: jest.Mock<Promise<string>, [string]> };
 
   beforeEach(() => {
     repository = new InMemoryVideoRepository();
     storage = new FakeVideoStorage();
     publisher = new FakeMessagePublisher();
     inspector = new FakeVideoContentInspector();
+    emailResolver = {
+      resolve: jest.fn<Promise<string>, [string]>(() => Promise.resolve('email@email.com.br')),
+    };
     useCase = new UploadVideoUseCase(
       repository,
       storage,
@@ -35,6 +39,7 @@ describe('UploadVideoUseCase', () => {
       inspector,
       new SequentialIdGenerator(),
       MAX_BYTES,
+      emailResolver,
     );
   });
 
@@ -53,12 +58,14 @@ describe('UploadVideoUseCase', () => {
     expect(saved?.format.value).toBe('mp4');
     expect(saved?.size.bytes).toBe(content.length);
     expect(saved?.status).toBe(VideoStatus.PENDING);
-    expect(storage.stored.get('original/user-1/video-1.mp4')).toEqual(content);
+    expect(storage.stored.get('email@email.com.br/Original/movie--video-1/original.mp4')).toEqual(
+      content,
+    );
     expect(publisher.published).toEqual([
       {
         videoId: 'video-1',
         ownerId: 'user-1',
-        storageKey: 'original/user-1/video-1.mp4',
+        storageKey: 'email@email.com.br/Original/movie--video-1/original.mp4',
         format: 'mp4',
         sizeBytes: content.length,
       },
@@ -75,6 +82,7 @@ describe('UploadVideoUseCase', () => {
     const saved = await repository.findById(VideoId.create('video-1'));
     expect(saved?.ownerId).toBe('token-user');
     expect(publisher.published[0]?.ownerId).toBe('token-user');
+    expect(emailResolver.resolve).toHaveBeenCalledWith('token-user');
   });
 
   it('rejects an unsupported extension', async () => {

@@ -162,7 +162,7 @@ describe('ProcessChunkUseCase', () => {
     chunkIndex: 0,
     startSeconds: 0,
     durationSeconds: 10,
-    storageKey: 'original/user-1/video-1.mp4',
+    storageKey: 'email@email.com.br/Original/movie--video-1/original.mp4',
   };
 
   let repository: InMemoryChunkRepository;
@@ -193,7 +193,10 @@ describe('ProcessChunkUseCase', () => {
     const chunk = await repository.findByVideoAndIndex('video-1', 0);
     expect(chunk?.status).toBe(ChunkStatus.COMPLETED);
     expect(chunk?.frameCount).toBe(2);
-    expect(storage.stored.size).toBe(2);
+    expect([...storage.stored.keys()].sort()).toEqual([
+      'email@email.com.br/Original/movie--video-1/frames/0/frame_000000.png',
+      'email@email.com.br/Original/movie--video-1/frames/0/frame_000001.png',
+    ]);
     expect(publisher.completed).toEqual([{ videoId: 'video-1', chunkIndex: 0, frameCount: 2 }]);
   });
 

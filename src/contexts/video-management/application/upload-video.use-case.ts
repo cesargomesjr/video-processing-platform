@@ -1,3 +1,4 @@
+import { originalVideoKey, videoObjectRoot } from '../../../platform/storage/video-object-keys';
 import { Video } from '../domain/video';
 import { VideoFormat } from '../domain/video-format';
 import { VideoId } from '../domain/video-id';
@@ -6,6 +7,7 @@ import { VideoStatusValue } from '../domain/video-status';
 import { VideoContentMismatchError, VideoStorageWriteError, VideoTooLargeError } from './errors';
 import { IdGenerator } from './ports/id-generator';
 import { MessagePublisher } from './ports/message-publisher';
+import { OwnerEmailResolver } from './ports/owner-email-resolver';
 import { VideoContentInspector } from './ports/video-content-inspector';
 import { VideoRepository } from './ports/video-repository';
 import { VideoStorage } from './ports/video-storage';
@@ -29,6 +31,7 @@ export class UploadVideoUseCase {
     private readonly contentInspector: VideoContentInspector,
     private readonly idGenerator: IdGenerator,
     private readonly maxBytes: number,
+    private readonly ownerEmailResolver: OwnerEmailResolver,
   ) {}
 
   public async execute(input: UploadVideoInput): Promise<UploadVideoResult> {
@@ -45,7 +48,9 @@ export class UploadVideoUseCase {
     }
 
     const videoId = VideoId.create(this.idGenerator.next());
-    const storageKey = `original/${input.ownerId}/${videoId.value}${format.extension}`;
+    const email = await this.ownerEmailResolver.resolve(input.ownerId);
+    const root = videoObjectRoot(email, input.originalName, videoId.value);
+    const storageKey = originalVideoKey(root, format.extension);
 
     const video = Video.create({
       id: videoId,

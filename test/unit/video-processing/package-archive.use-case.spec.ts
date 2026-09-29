@@ -26,7 +26,7 @@ const videoBase = {
   originalName: 'movie.mp4',
   format: VideoFormat.create('mp4'),
   size: VideoSize.create(1024, 1024 * 1024),
-  storageKey: 'original/user-1/video-1.mp4',
+  storageKey: 'email@email.com.br/Original/movie--video-1/original.mp4',
 };
 
 class InMemoryFrameStorage implements FrameStorage {
@@ -136,28 +136,44 @@ describe('PackageArchiveUseCase', () => {
 
   it('packages frames in order and publishes VideoCompleted', async () => {
     await seedAggregatingVideo();
-    await frameStorage.put('frames/video-1/frame_000001.png', Buffer.from('b'));
-    await frameStorage.put('frames/video-1/frame_000000.png', Buffer.from('a'));
+    await frameStorage.put(
+      'email@email.com.br/Original/movie--video-1/frames/0/frame_000001.png',
+      Buffer.from('b'),
+    );
+    await frameStorage.put(
+      'email@email.com.br/Original/movie--video-1/frames/0/frame_000000.png',
+      Buffer.from('a'),
+    );
 
     await useCase.execute({ videoId: 'video-1' });
 
     expect(archiveBuilder.files.map((file) => file.key)).toEqual([
-      'frames/video-1/frame_000000.png',
-      'frames/video-1/frame_000001.png',
+      'frames/0/frame_000000.png',
+      'frames/0/frame_000001.png',
     ]);
 
     const video = await videoRepository.findById(VideoId.create('video-1'));
     expect(video?.status).toBe(VideoStatus.COMPLETED);
-    expect(video?.zipKey).toBe('archives/video-1.zip');
-    expect(videoStorage.stored.get('archives/video-1.zip')).toEqual(Buffer.from('zip'));
+    expect(video?.zipKey).toBe('email@email.com.br/Original/movie--video-1/archives/frames.zip');
+    expect(
+      videoStorage.stored.get('email@email.com.br/Original/movie--video-1/archives/frames.zip'),
+    ).toEqual(Buffer.from('zip'));
     expect(publisher.videoCompleted).toEqual([
-      { videoId: 'video-1', ownerId: 'user-1', zipKey: 'archives/video-1.zip', frameCount: 2 },
+      {
+        videoId: 'video-1',
+        ownerId: 'user-1',
+        zipKey: 'email@email.com.br/Original/movie--video-1/archives/frames.zip',
+        frameCount: 2,
+      },
     ]);
   });
 
   it('does not set zipKey when the archive upload fails', async () => {
     await seedAggregatingVideo();
-    await frameStorage.put('frames/video-1/frame_000000.png', Buffer.from('a'));
+    await frameStorage.put(
+      'email@email.com.br/Original/movie--video-1/frames/0/frame_000000.png',
+      Buffer.from('a'),
+    );
     videoStorage.shouldFail = true;
 
     await useCase.execute({ videoId: 'video-1' });
@@ -181,7 +197,7 @@ describe('PackageArchiveUseCase', () => {
       Video.reconstitute({
         ...videoBase,
         status: VideoStatus.COMPLETED,
-        zipKey: 'archives/video-1.zip',
+        zipKey: 'email@email.com.br/Original/movie--video-1/archives/frames.zip',
         durationMs: 10_000,
       }),
     );

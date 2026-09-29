@@ -1,3 +1,10 @@
+import { posix } from 'node:path';
+
+import {
+  archiveKey,
+  framesPrefix,
+  videoRootFromStorageKey,
+} from '../../../platform/storage/video-object-keys';
 import { VideoProcessingError } from './errors';
 import { ArchiveBuilder } from './ports/archive-builder';
 import { FrameStorage } from './ports/frame-storage';
@@ -29,7 +36,8 @@ export class PackageArchiveUseCase {
       return;
     }
 
-    const prefix = `frames/${input.videoId}/`;
+    const root = videoRootFromStorageKey(video.storageKey);
+    const prefix = framesPrefix(video.storageKey);
 
     let keys;
     try {
@@ -44,12 +52,12 @@ export class PackageArchiveUseCase {
     try {
       const files = await Promise.all(
         keys.map(async (key) => ({
-          key,
+          key: posix.relative(root, key),
           content: await this.frameStorage.get(key),
         })),
       );
       const zipBuffer = await this.archiveBuilder.build(files);
-      const zipKey = `archives/${video.id}.zip`;
+      const zipKey = archiveKey(video.storageKey);
 
       await this.videoStorage.put(zipKey, zipBuffer);
 

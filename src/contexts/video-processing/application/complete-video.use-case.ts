@@ -1,3 +1,4 @@
+import { archiveKey } from '../../../platform/storage/video-object-keys';
 import { VideoProcessingError } from './errors';
 import { ProcessingVideoRepository } from './ports/processing-video-repository';
 import { VideoFileStorage } from './ports/video-file-storage';
@@ -29,7 +30,7 @@ export class CompleteVideoUseCase {
       throw new VideoProcessingError(`Video is not pending: ${video.status}`);
     }
 
-    const zipKey = `archives/${video.id}.zip`;
+    const zipKey = archiveKey(video.storageKey);
     await this.videoStorage.put(zipKey, EMPTY_ZIP);
 
     await this.videoRepository.completePending(video.id, zipKey);

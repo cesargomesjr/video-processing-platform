@@ -17,6 +17,7 @@ import { AppConfig } from '../platform/config/app-config.schema';
 import { APP_CONFIG } from '../platform/config/app-config.token';
 import { ConfigModule } from './config.module';
 import { DatabaseModule } from './database.module';
+import { PostgresUserEmailResolver } from './postgres-user-email-resolver';
 import { MetricsModule } from './metrics.module';
 import { RateLimitModule } from './rate-limit.module';
 import {
@@ -80,6 +81,7 @@ import {
         VIDEO_CONTENT_INSPECTOR,
         VIDEO_ID_GENERATOR,
         APP_CONFIG,
+        DATA_SOURCE,
       ],
       useFactory: (
         videoRepository: PostgresVideoRepository,
@@ -88,6 +90,7 @@ import {
         contentInspector: FileSignatureVideoContentInspector,
         idGenerator: UuidIdGenerator,
         config: AppConfig,
+        dataSource: DataSource,
       ): UploadVideoUseCase =>
         new UploadVideoUseCase(
           videoRepository,
@@ -96,6 +99,7 @@ import {
           contentInspector,
           idGenerator,
           config.videoManagement.maxSizeBytes,
+          new PostgresUserEmailResolver(dataSource),
         ),
     },
     {

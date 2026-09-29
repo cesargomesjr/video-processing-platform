@@ -19,7 +19,7 @@ function pendingVideo(): Video {
     ownerId: 'user-1',
     originalName: 'movie.mp4',
     ...base,
-    storageKey: 'original/user-1/video-1.mp4',
+    storageKey: 'email@email.com.br/Original/movie--video-1/original.mp4',
   });
 }
 
@@ -41,8 +41,10 @@ describe('CompleteVideoUseCase', () => {
 
     const saved = await repository.findById(VideoId.create('video-1'));
     expect(saved?.status).toBe(VideoStatus.COMPLETED);
-    expect(saved?.zipKey).toBe('archives/video-1.zip');
-    expect(storage.stored.has('archives/video-1.zip')).toBe(true);
+    expect(saved?.zipKey).toBe('email@email.com.br/Original/movie--video-1/archives/frames.zip');
+    expect(
+      storage.stored.has('email@email.com.br/Original/movie--video-1/archives/frames.zip'),
+    ).toBe(true);
   });
 
   it('is idempotent for an already completed video', async () => {
@@ -51,9 +53,9 @@ describe('CompleteVideoUseCase', () => {
       ownerId: 'user-1',
       originalName: 'movie.mp4',
       ...base,
-      storageKey: 'original/user-1/video-1.mp4',
+      storageKey: 'email@email.com.br/Original/movie--video-1/original.mp4',
       status: VideoStatus.COMPLETED,
-      zipKey: 'archives/video-1.zip',
+      zipKey: 'email@email.com.br/Original/movie--video-1/archives/frames.zip',
       durationMs: null,
     });
     await repository.save(completed);
@@ -73,7 +75,7 @@ describe('CompleteVideoUseCase', () => {
       ownerId: 'user-1',
       originalName: 'movie.mp4',
       ...base,
-      storageKey: 'original/user-1/video-1.mp4',
+      storageKey: 'email@email.com.br/Original/movie--video-1/original.mp4',
       status: VideoStatus.PROCESSING,
       zipKey: null,
       durationMs: null,

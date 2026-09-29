@@ -89,6 +89,14 @@ class NoopMessagePublisher implements MessagePublisher {
   }
 }
 
+function storageKey(videoId: string): string {
+  return `email@email.com.br/Original/fixture--${videoId}/original.mp4`;
+}
+
+function zipKey(videoId: string): string {
+  return `email@email.com.br/Original/fixture--${videoId}/archives/frames.zip`;
+}
+
 const VIDEO_IDS = [
   '11111111-1111-1111-1111-111111111111',
   '22222222-2222-2222-2222-222222222222',
@@ -162,7 +170,7 @@ describe('concurrent video processing (integration)', () => {
       await s3Client.send(
         new PutObjectCommand({
           Bucket: BUCKET,
-          Key: `original/${videoId}.mp4`,
+          Key: storageKey(videoId),
           Body: content,
         }),
       );
@@ -214,7 +222,7 @@ describe('concurrent video processing (integration)', () => {
           originalName: 'fixture.mp4',
           format: VideoFormat.create('mp4'),
           size: VideoSize.create(11_570, 100 * 1024 * 1024),
-          storageKey: `original/${videoId}.mp4`,
+          storageKey: storageKey(videoId),
         }),
       );
     }
@@ -255,7 +263,7 @@ describe('concurrent video processing (integration)', () => {
               chunkIndex: index,
               startSeconds: window.startMs / 1_000,
               durationSeconds: window.durationMs / 1_000,
-              storageKey: `original/${videoId}.mp4`,
+              storageKey: storageKey(videoId),
             }),
           ),
         );
@@ -282,10 +290,10 @@ describe('concurrent video processing (integration)', () => {
     for (const videoId of VIDEO_IDS) {
       const video = await videoRepository.findById(VideoId.create(videoId));
       expect(video?.status).toBe(VideoStatus.COMPLETED);
-      expect(video?.zipKey).toBe(`archives/${videoId}.zip`);
+      expect(video?.zipKey).toBe(zipKey(videoId));
 
       const zip = await s3Client.send(
-        new GetObjectCommand({ Bucket: BUCKET, Key: `archives/${videoId}.zip` }),
+        new GetObjectCommand({ Bucket: BUCKET, Key: zipKey(videoId) }),
       );
       const body = zip.Body === undefined ? null : await zip.Body.transformToByteArray();
       expect(body).not.toBeNull();

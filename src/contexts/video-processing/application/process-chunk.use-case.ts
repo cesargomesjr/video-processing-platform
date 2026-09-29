@@ -2,6 +2,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+import { framesPrefix } from '../../../platform/storage/video-object-keys';
 import { ChunkStatus } from '../domain/chunk-status';
 import { ExtractFramesSpec } from '../domain/extract-frames-spec';
 import { VideoProcessingError } from './errors';
@@ -72,7 +73,7 @@ export class ProcessChunkUseCase {
 
     try {
       for (const frame of frames) {
-        const frameKey = `frames/${input.videoId}/${input.chunkIndex}/${frame.key}`;
+        const frameKey = `${framesPrefix(input.storageKey)}${input.chunkIndex}/${frame.key}`;
         await this.frameStorage.put(frameKey, frame.content);
       }
     } catch {

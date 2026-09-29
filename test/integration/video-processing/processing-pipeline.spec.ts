@@ -7,6 +7,7 @@ import { promisify } from 'node:util';
 import {
   CreateBucketCommand,
   GetObjectCommand,
+  ListObjectsV2Command,
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
@@ -53,7 +54,9 @@ const execFileAsync = promisify(execFile);
 const BUCKET = 'fiapx-pipeline-test';
 const VIDEO_ID = '11111111-1111-1111-1111-111111111111';
 const OWNER_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
-const STORAGE_KEY = `original/${OWNER_ID}/${VIDEO_ID}.mp4`;
+const ROOT = `email@email.com.br/Original/fixture--${VIDEO_ID}`;
+const STORAGE_KEY = `${ROOT}/original.mp4`;
+const ZIP_KEY = `${ROOT}/archives/frames.zip`;
 
 class FakeMessagePublisher implements MessagePublisher {
   public readonly analyzed: VideoAnalyzedEvent[] = [];
@@ -275,13 +278,22 @@ describe('video-processing pipeline (integration)', () => {
     );
     await packageArchive.execute({ videoId: VIDEO_ID });
 
+    const frames = await s3Client.send(
+      new ListObjectsV2Command({ Bucket: BUCKET, Prefix: `${ROOT}/frames/` }),
+    );
+    expect(frames.Contents?.map((item) => item.Key)).toEqual(
+      expect.arrayContaining([
+        expect.stringMatching(
+          /^email@email\.com\.br\/Original\/fixture--.+\/frames\/0\/frame_.*\.png$/,
+        ),
+      ]),
+    );
+
     const completed = await videoRepository.findById(VideoId.create(VIDEO_ID));
     expect(completed?.status).toBe(VideoStatus.COMPLETED);
-    expect(completed?.zipKey).toBe(`archives/${VIDEO_ID}.zip`);
+    expect(completed?.zipKey).toBe(ZIP_KEY);
 
-    const zip = await s3Client.send(
-      new GetObjectCommand({ Bucket: BUCKET, Key: `archives/${VIDEO_ID}.zip` }),
-    );
+    const zip = await s3Client.send(new GetObjectCommand({ Bucket: BUCKET, Key: ZIP_KEY }));
     const zipBody = zip.Body === undefined ? null : await zip.Body.transformToByteArray();
     expect(zipBody).not.toBeNull();
   });
