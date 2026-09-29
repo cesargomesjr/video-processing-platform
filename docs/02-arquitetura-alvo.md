@@ -17,7 +17,7 @@
 flowchart LR
     U[Usuário<br/>upload, status, download]
     A[Cliente API<br/>CI / scripts / Postman]
-    P[FIAP X — Plataforma de<br/>Processamento de Vídeos]
+    P[videoPIC — Plataforma de<br/>Processamento de Vídeos]
     M[Servidor de E-mail<br/>SMTP / SES]
     O[(Object Storage<br/>S3 / MinIO)]
 
@@ -305,7 +305,7 @@ projeto base (`go run` em produção) é um anti-exemplo: não replicar.
 ### 7.3 K8s (opcional / demonstração)
 
 - `Deployment` da API com `HorizontalPodAutoscaler`.
-- `Deployment` do worker com `replicas: N` e escala por fila (KEDA, se houver tempo).
+- `Deployment` do worker com escala por fila RabbitMQ via KEDA (0 a 4 réplicas no Kubernetes local).
 - `CronJob` de retenção (apagar frames antigos).
 - `ConfigMap`/`Secret` para configuração.
 

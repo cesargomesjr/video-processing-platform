@@ -13,6 +13,7 @@ export default tseslint.config(
       '**/coverage/**',
       '**/node_modules/**',
       'legacy/**',
+      'apps/web/**',
       'eslint.config.mjs',
       '.dependency-cruiser.cjs',
       'jest.config.cjs',

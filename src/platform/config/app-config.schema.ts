@@ -17,10 +17,13 @@ const rawEnvSchema = z.object({
   S3_SECRET_KEY: nonEmptyString('S3_SECRET_KEY'),
   S3_BUCKET: nonEmptyString('S3_BUCKET'),
   S3_REGION: nonEmptyString('S3_REGION').default('us-east-1'),
+  S3_PUBLIC_ENDPOINT: nonEmptyString('S3_PUBLIC_ENDPOINT').default('http://localhost:9000'),
   JWT_SECRET: nonEmptyString('JWT_SECRET'),
   JWT_EXPIRES_IN: nonEmptyString('JWT_EXPIRES_IN').default('15m'),
   CHUNK_SECONDS: positiveInteger('CHUNK_SECONDS').default(10),
   MAX_CHUNKS: positiveInteger('MAX_CHUNKS').default(100),
+  MAX_VIDEO_SIZE_BYTES: positiveInteger('MAX_VIDEO_SIZE_BYTES').default(500 * 1024 * 1024),
+  DOWNLOAD_URL_TTL_SECONDS: positiveInteger('DOWNLOAD_URL_TTL_SECONDS').default(300),
   SMTP_HOST: nonEmptyString('SMTP_HOST').default('localhost'),
   SMTP_PORT: positiveInteger('SMTP_PORT').default(1025),
 });
@@ -33,6 +36,7 @@ const appConfigSchema = rawEnvSchema.transform((raw) => ({
   redisUrl: raw.REDIS_URL,
   s3: {
     endpoint: raw.S3_ENDPOINT,
+    publicEndpoint: raw.S3_PUBLIC_ENDPOINT,
     accessKey: raw.S3_ACCESS_KEY,
     secretKey: raw.S3_SECRET_KEY,
     bucket: raw.S3_BUCKET,
@@ -45,6 +49,10 @@ const appConfigSchema = rawEnvSchema.transform((raw) => ({
   processing: {
     chunkSeconds: raw.CHUNK_SECONDS,
     maxChunks: raw.MAX_CHUNKS,
+  },
+  videoManagement: {
+    maxSizeBytes: raw.MAX_VIDEO_SIZE_BYTES,
+    downloadUrlTtlSeconds: raw.DOWNLOAD_URL_TTL_SECONDS,
   },
   smtp: {
     host: raw.SMTP_HOST,

@@ -35,3 +35,6 @@ __MACOSX/
 infra/data/
 infra/minio-data/
 infra/postgres-data/
+
+# Roteiro pessoal da apresentacao
+/docs/06-roteiro-demo.md

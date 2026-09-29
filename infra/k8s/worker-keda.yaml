@@ -1,0 +1,62 @@
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: worker-rabbitmq
+spec:
+  secretTargetRef:
+    - parameter: host
+      name: fiapx-secrets
+      key: RABBITMQ_MANAGEMENT_URL
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: worker
+spec:
+  scaleTargetRef:
+    name: worker
+  pollingInterval: 5
+  cooldownPeriod: 300
+  minReplicaCount: 0
+  maxReplicaCount: 4
+  triggers:
+    - type: rabbitmq
+      metadata:
+        protocol: http
+        mode: QueueLength
+        queueName: ^video[.](uploaded[.]analyzer|analyzed[.]orchestrator|chunk[.]process[.]worker|chunk[.](completed|failed)[.]aggregator|chunks[.]all[.]packager|(completed|failed)[.]notification)$
+        useRegex: 'true'
+        operation: sum
+        value: '2'
+      authenticationRef:
+        name: worker-rabbitmq
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: recover-stale-chunks
+spec:
+  schedule: '* * * * *'
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 30
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      ttlSecondsAfterFinished: 300
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: recovery
+              image: fiapx-worker:local
+              imagePullPolicy: Never
+              command: ['node', 'apps/worker/dist/apps/worker/src/recover-stale.js']
+              envFrom:
+                - configMapRef:
+                    name: fiapx-config
+                - secretRef:
+                    name: fiapx-secrets
+              resources:
+                requests: { cpu: 50m, memory: 128Mi }
+                limits: { cpu: 500m, memory: 512Mi }
