@@ -23,7 +23,7 @@ Principais capacidades:
 - Fila durável com retry, backoff e DLQ.
 - Idempotência e transições de estado protegidas por compare-and-set.
 - Rate limiting por Redis.
-- Observabilidade: logs estruturados, métricas Prometheus, health checks e provisionamento do Grafana.
+- Observabilidade: logs estruturados, métricas Prometheus, Loki no Kubernetes local, health checks e Grafana.
 
 ---
 
@@ -46,7 +46,11 @@ flowchart LR
     W -->|notificação de falha| SMTP
 
     API -.metrics.-> PROM[Prometheus]
+    API -.logs.-> ALLOY[Grafana Alloy]
+    W -.logs.-> ALLOY
+    ALLOY --> LOKI[Loki]
     PROM --> GRAF[Grafana]
+    LOKI --> GRAF
 ```
 
 ### 2.2 Bounded contexts
@@ -87,7 +91,7 @@ Cada etapa é um consumidor independente e idempotente. Chunks em `PROCESSING` p
 - **Banco:** PostgreSQL
 - **Storage:** MinIO (compatível com S3)
 - **Cache/rate limit:** Redis
-- **Observabilidade:** Prometheus, Grafana, logs estruturados, `traceparent`
+- **Observabilidade:** Prometheus, Grafana, Loki/Alloy no Kubernetes local, logs estruturados, `traceparent`
 - **Testes:** Jest (unit, integração com Testcontainers, e2e com Supertest)
 
 ---
@@ -182,7 +186,9 @@ A página fala com a API em `http://localhost:3000` (ajuste a constante `API_BAS
 
 ### 5.6 Observabilidade
 
-O `docker-compose.yml` também provisiona Prometheus e Grafana:
+O `docker-compose.yml` também provisiona Prometheus e Grafana. No
+Kubernetes local, Grafana Alloy envia logs dos pods para Loki e o Grafana já tem
+ambos os datasources provisionados; veja [Kubernetes local](docs/06-kubernetes-local.md).
 
 - Prometheus: `http://localhost:9090`
 - Grafana: `http://localhost:3001`
@@ -192,6 +198,20 @@ Endpoints da API:
 - `GET /health/live` — processo vivo
 - `GET /health/ready` — dependências prontas
 - `GET /metrics` — métricas Prometheus
+
+### 5.7 Objetos no MinIO
+
+Cada upload cria uma pasta pelo e-mail do usuário e outra pelo nome do vídeo
+normalizado, com o ID para evitar colisões:
+
+```text
+email@email.com.br/
+  Original/
+    nome-do-video--<videoId>/
+      original.mp4
+      frames/<chunkIndex>/frame_000000.png
+      archives/frames.zip
+```
 
 ---
 
@@ -236,7 +256,7 @@ e usam FFmpeg real com vídeos de fixture. O CI valida lint, typecheck, testes c
 - [`docs/02-arquitetura-alvo.md`](docs/02-arquitetura-alvo.md) — arquitetura TO-BE e ADRs
 - [`docs/03-especificacao-funcional.md`](docs/03-especificacao-funcional.md) — domínio, casos de uso e contratos
 - [`docs/04-plano-de-implementacao.md`](docs/04-plano-de-implementacao.md) — fases, CI/CD e DoD
-- [`docs/07-kubernetes-local.md`](docs/07-kubernetes-local.md) — deploy local no Minikube e HPA
+- [`docs/06-kubernetes-local.md`](docs/06-kubernetes-local.md) — deploy local no Minikube, KEDA e Loki
 
 ---
 
