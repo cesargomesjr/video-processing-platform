@@ -15,9 +15,15 @@ configMapGenerator:
   - name: prometheus-config
     files:
       - prometheus.yml=k8s/prometheus.yml
+  - name: loki-config
+    files:
+      - loki.yml=k8s/loki.yml
+  - name: alloy-config
+    files:
+      - config.alloy=k8s/alloy.alloy
   - name: grafana-datasource
     files:
-      - prometheus.yml=grafana/provisioning/datasources/prometheus.yml
+      - datasources.yml=k8s/grafana-datasources.yml
   - name: grafana-dashboard-provider
     files:
       - dashboard.yml=k8s/grafana-dashboard-provider.yml

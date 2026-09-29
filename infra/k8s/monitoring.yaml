@@ -3,6 +3,11 @@ kind: ServiceAccount
 metadata:
   name: prometheus
 ---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: alloy
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
@@ -24,6 +29,140 @@ roleRef:
   kind: Role
   name: prometheus-pods
   apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: alloy-pods
+rules:
+  - apiGroups: ['']
+    resources: [pods]
+    verbs: [get, list, watch]
+  - apiGroups: ['']
+    resources: [pods/log]
+    verbs: [get]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: alloy-pods
+subjects:
+  - kind: ServiceAccount
+    name: alloy
+    namespace: fiapx
+roleRef:
+  kind: Role
+  name: alloy-pods
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: loki-data
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: loki
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: loki
+  template:
+    metadata:
+      labels:
+        app: loki
+    spec:
+      securityContext:
+        fsGroup: 10001
+      containers:
+        - name: loki
+          image: grafana/loki:3.7.8
+          args:
+            - -config.file=/etc/loki/loki.yml
+          ports:
+            - containerPort: 3100
+          volumeMounts:
+            - name: config
+              mountPath: /etc/loki/loki.yml
+              subPath: loki.yml
+              readOnly: true
+            - name: data
+              mountPath: /loki
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 3100
+            periodSeconds: 5
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { cpu: 500m, memory: 768Mi }
+      volumes:
+        - name: config
+          configMap:
+            name: loki-config
+        - name: data
+          persistentVolumeClaim:
+            claimName: loki-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: loki
+spec:
+  selector: { app: loki }
+  ports:
+    - port: 3100
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alloy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: alloy
+  template:
+    metadata:
+      labels:
+        app: alloy
+    spec:
+      serviceAccountName: alloy
+      containers:
+        - name: alloy
+          image: grafana/alloy:v1.20.0
+          args:
+            - run
+            - --server.http.listen-addr=0.0.0.0:12345
+            - /etc/alloy/config.alloy
+          ports:
+            - containerPort: 12345
+          volumeMounts:
+            - name: config
+              mountPath: /etc/alloy/config.alloy
+              subPath: config.alloy
+              readOnly: true
+          readinessProbe:
+            httpGet:
+              path: /-/ready
+              port: 12345
+            periodSeconds: 5
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { cpu: 300m, memory: 512Mi }
+      volumes:
+        - name: config
+          configMap:
+            name: alloy-config
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -137,8 +276,8 @@ spec:
             - name: data
               mountPath: /var/lib/grafana
             - name: datasource
-              mountPath: /etc/grafana/provisioning/datasources/prometheus.yml
-              subPath: prometheus.yml
+              mountPath: /etc/grafana/provisioning/datasources/datasources.yml
+              subPath: datasources.yml
               readOnly: true
             - name: dashboard-provider
               mountPath: /etc/grafana/provisioning/dashboards/dashboard.yml
