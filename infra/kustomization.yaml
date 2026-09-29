@@ -8,6 +8,7 @@ resources:
   - k8s/application.yaml
   - k8s/monitoring.yaml
   - k8s/autoscaling.yaml
+  - k8s/worker-keda.yaml
 configMapGenerator:
   - name: postgres-schema
     files:
