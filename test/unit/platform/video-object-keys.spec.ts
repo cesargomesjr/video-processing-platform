@@ -24,4 +24,16 @@ describe('video object keys', () => {
 
     expect(root).toBe('user%2Fpath@example.com/Original/clip--video-1');
   });
+
+  it('uses a fallback for names without Latin letters or digits', () => {
+    expect(videoObjectRoot(' USER+demo@Example.com ', '!!!.mp4', 'video-1')).toBe(
+      'user+demo@example.com/Original/video--video-1',
+    );
+  });
+
+  it('keeps a dotfile name intact when it has no extension separator', () => {
+    expect(videoObjectRoot('user@example.com', '.hidden', 'video-2')).toBe(
+      'user@example.com/Original/hidden--video-2',
+    );
+  });
 });
